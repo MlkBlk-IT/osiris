@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OSIRIS — Control Plane</title>
+<link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow a"></div>
+<div class="bg-glow b"></div>
+<div class="bg-glow c"></div>
+<div class="bg-noise"></div>
+
+<div id="app">
+
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>
+        </svg>
+      </div>
+      <div>
+        <h1>OSIRIS</h1>
+        <div class="sub">control plane</div>
+      </div>
+    </div>
+
+    <div class="nav-label">Controle</div>
+    <div class="nav-item active" data-view="overview"><span class="ico">◈</span>Vue d'ensemble</div>
+    <div class="nav-item" data-view="tasks"><span class="ico">◱</span>Taches<span class="badge" id="b-tasks">0</span></div>
+    <div class="nav-item" data-view="events"><span class="ico">≡</span>Journal<span class="badge" id="b-events">0</span></div>
+
+    <div class="nav-label">Contexte</div>
+    <div class="nav-item" data-view="prefix"><span class="ico">⬡</span>Manifeste &amp; Prefix</div>
+    <div class="nav-item" data-view="memory"><span class="ico">◇</span>Memoire<span class="badge" id="b-memory">0</span></div>
+    <div class="nav-item" data-view="refs"><span class="ico">⛁</span>Refs<span class="badge" id="b-refs">0</span></div>
+    <div class="nav-item" data-view="handoffs"><span class="ico">⇄</span>Handoffs<span class="badge" id="b-handoffs">0</span></div>
+
+    <div class="nav-label">Economie</div>
+    <div class="nav-item" data-view="ledger"><span class="ico">▤</span>Ledger<span class="badge" id="b-ledger">0</span></div>
+    <div class="nav-item" data-view="bench"><span class="ico">⚖</span>Benchmark</div>
+
+    <div class="nav-label">Securite</div>
+    <div class="nav-item" data-view="loopguard"><span class="ico">∞</span>Anti-boucle<span class="badge" id="b-fp">0</span></div>
+    <div class="nav-item" data-view="invariants"><span class="ico">⊘</span>Invariants<span class="badge" id="b-inv">0</span></div>
+    <div class="nav-item" data-view="audit"><span class="ico">✓</span>Audit LOSSLESS</div>
+
+    <div class="nav-label">Systeme</div>
+    <div class="nav-item" data-view="tools"><span class="ico">⚙</span>Outils MCP<span class="badge" id="b-tools">0</span></div>
+    <div class="nav-item" data-view="diagnostics"><span class="ico">⌁</span>Diagnostics<span class="badge" id="b-diag">0</span></div>
+    <div class="nav-item" data-view="config"><span class="ico">⌘</span>Configuration</div>
+
+    <div class="side-foot">
+      <div><span class="dot" id="db-dot"></span><span id="db-state">connexion…</span></div>
+      <div id="db-path">—</div>
+      <div id="db-clock">—</div>
+    </div>
+  </aside>
+
+  <!-- ============================ WORKSPACE ============================ -->
+  <main id="workspace">
+    <header id="topbar">
+      <div class="kpi"><span class="v" id="k-tasks">—</span><span class="l">TACHES</span></div>
+      <div class="kpi"><span class="v" id="k-refs">—</span><span class="l">REFS</span></div>
+      <div class="kpi"><span class="v" id="k-events">—</span><span class="l">JOURNAL</span></div>
+      <div class="kpi"><span class="v" id="k-saved">—</span><span class="l">TOKENS ECONOMISES (PREUVES)</span></div>
+      <div class="kpi"><span class="v" id="k-moved">—</span><span class="l">TOKENS DEPLACES (REFS)</span></div>
+      <div class="kpi"><span class="v" id="k-overhead">—</span><span class="l">SURCOUT OSIRIS</span></div>
+      <div class="kpi"><span class="v" id="k-net">—</span><span class="l">GAIN NET</span></div>
+      <div class="kpi"><span class="v" id="k-integrity">—</span><span class="l">INTEGRITE</span></div>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="btn-refresh">⟳ Actualiser</button>
+      <button class="btn ghost" id="btn-panel">◨ Panneau</button>
+    </header>
+
+    <section id="view"></section>
+  </main>
+
+  <!-- ============================ RIGHT PANEL ============================ -->
+  <aside id="panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Contexte tache</div>
+        <div class="panel-sub" id="panel-task">—</div>
+      </div>
+      <button class="icon-btn" id="btn-close-panel" title="Masquer">×</button>
+    </div>
+
+    <div class="panel-sec">
+      <div class="sec-title">Etat courant</div>
+      <div id="panel-state" class="panel-empty">Aucune tache selectionnee.</div>
+    </div>
+
+    <div class="panel-sec">
+      <div class="sec-title">Manifeste</div>
+      <div id="panel-manifest" class="mono-box">—</div>
+    </div>
+
+    <div class="panel-sec">
+      <div class="sec-title">Budget &amp; integrite</div>
+      <div id="panel-budget" class="panel-empty">—</div>
+    </div>
+
+    <div class="panel-sec grow">
+      <div class="sec-title">Flux live</div>
+      <div id="panel-feed" class="feed"></div>
+    </div>
+
+    <div class="panel-sec">
+      <div class="sec-title">Actions</div>
+      <div class="actions">
+        <button class="btn" data-act="audit">Audit</button>
+        <button class="btn" data-act="bench">Benchmark</button>
+        <button class="btn" data-act="diag">Diagnostics</button>
+        <button class="btn danger" data-act="refresh">Reload</button>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<div id="toast"></div>
+<script src="/assets/app.js"></script>
+</body>
+</html>

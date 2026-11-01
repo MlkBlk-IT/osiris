@@ -1,0 +1,34 @@
+{
+  "exact": {
+    "tool_calls": 4,
+    "tool_calls_avoided": 1,
+    "loops_blocked": 1,
+    "files_tracked": 1,
+    "files_externalized": 1,
+    "payloads_externalized": 1,
+    "bytes_externalized": 0,
+    "journal_events": 23,
+    "open_actions_unknown": 0,
+    "resumes": 0,
+    "handoffs": 1,
+    "prefix_stability": 1.0,
+    "integrity_violations": 0
+  },
+  "estimated": {
+    "tokens_observed": 107,
+    "tokens_saved": 310,
+    "tokens_cached_estimate": 0,
+    "tokens_fresh_estimate": 0,
+    "osiris_overhead_tokens": 791,
+    "net_saving_tokens": -481,
+    "cost_estimated_usd": 0.002694,
+    "cache_hit_estimate": 0.95,
+    "handoff_context_tokens_saved_estimate": 0
+  },
+  "verifiable": {
+    "lossless": true,
+    "items_verified": 1,
+    "items_externalized": 1,
+    "items_dropped": 0
+  }
+}

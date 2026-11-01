@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "osiris": {
+      "type": "stdio",
+      "command": "D:\\MCP-Osiris\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "osiris"],
+      "env": {
+        "OSIRIS_LOG_LEVEL": "INFO",
+        "OSIRIS_HOME": "D:\\MCP-Osiris\\data\\home",
+        "OSIRIS_ROOTS": "D:\\MCP-Osiris",
+        "OSIRIS_CACHE_TTL_S": "300",
+        "OSIRIS_PRUNE_THRESHOLD_TOKENS": "40000"
+      }
+    }
+  }
+}
