@@ -1,0 +1,50 @@
+{
+  "name": "osiris-mcp",
+  "version": "0.1.0",
+  "description": "OSIRIS — context engine cache-aware pour agents IA. Serveur MCP local et provider-agnostic : filtrage serveur des payloads, ledger de contexte honnete, decisions append-only, garde-fous anti-boucle.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "osiris",
+    "context-engine",
+    "prompt-cache",
+    "agents",
+    "llm",
+    "cost-optimization",
+    "token-economy",
+    "memory"
+  ],
+  "homepage": "https://github.com/MlkBlk-IT/osiris",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MlkBlk-IT/osiris.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MlkBlk-IT/osiris/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Malik Belkacemi",
+    "url": "https://github.com/MlkBlk-IT"
+  },
+  "mcpName": "io.github.MlkBlk-IT/osiris",
+  "bin": {
+    "osiris-mcp": "bin/osiris-mcp.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "win32",
+    "linux",
+    "darwin"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

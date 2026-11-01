@@ -22,3 +22,18 @@ data/*
 # Secrets
 .env
 .env.*
+
+# Packaging / publication
+node_modules/
+*.egg-info/
+dist/
+npm/*.tgz
+.venv-pkgtest/
+.pytest-tmp/
+
+# Sauvegardes et logs locaux (jamais dans la distribution)
+*.bak*
+_backup_*/
+_livetest/
+*.log
+

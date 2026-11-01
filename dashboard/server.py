@@ -60,36 +60,36 @@ DIAGNOSTICS: list[dict[str, Any]] = [
         "id": "CLI-TASKS-CRASH",
         "severity": "critical",
         "component": "src/osiris/cli.py",
-        "title": "`python -m osiris tasks` leve une AttributeError",
+        "title": "`python -m osiris tasks` raises an AttributeError",
         "symptom": "AttributeError: 'Namespace' object has no attribute 'limit'",
         "cause": (
-            "Le sous-parser argparse `tasks` ne declarait pas l'option `--limit`, "
-            "alors que `_cmd_tasks` lisait `args.limit`."
+            "The `tasks` argparse sub-parser did not declare the `--limit` option, "
+            "while `_cmd_tasks` read `args.limit`."
         ),
-        "fix": "Option `--limit` (defaut 50) ajoutee au sous-parser `tasks`.",
+        "fix": "Added the `--limit` option (default 50) to the `tasks` sub-parser.",
         "status": "fixed",
     },
     {
         "id": "ADAPTIVE-COMPACTION-GAP",
         "severity": "high",
         "component": "src/osiris/server.py",
-        "title": "`osiris.checkpoint` ignorait completement le mode `light`",
+        "title": "`osiris.checkpoint` completely ignored `light` mode",
         "symptom": (
-            "Sur un payload de 172 tokens, la reponse `osiris.checkpoint` en "
-            "mode final coutait 120 tokens (chemin du rapport + digest + "
-            "compteurs) : 30 % du surcout d'OSIRIS, pour une tache minuscule."
+            "On a 172-token payload, the `osiris.checkpoint` response in final "
+            "mode cost 120 tokens (report path + digest + counters): 30% of "
+            "OSIRIS overhead, for a tiny task."
         ),
         "cause": (
-            "`adaptive.py` documente que les reponses 'pleines' sont un luxe sur "
-            "une petite tache, mais la branche `compact` n'existait que dans "
-            "`osiris.observe`. `osiris.checkpoint` renvoyait toujours la charge "
-            "complete, quel que soit le niveau adaptatif."
+            "`adaptive.py` documents that full responses are a luxury on a small "
+            "task, but the `compact` branch only existed in `osiris.observe`. "
+            "`osiris.checkpoint` always returned the full payload, whatever the "
+            "adaptive level."
         ),
         "fix": (
-            "En mode `light`, `checkpoint` renvoie uniquement `checkpoint_id`, "
-            "`integrity` et `information_perdue`. Le rapport reste ecrit sur "
-            "disque, les compteurs restent dans la base : rien n'est perdu, "
-            "seule la redondance dans le contexte a disparu."
+            "In `light` mode, `checkpoint` now returns only `checkpoint_id`, "
+            "`integrity` and `information_perdue`. The report is still written "
+            "to disk and counters stay in the database: nothing is lost, only "
+            "the redundancy in the context is gone."
         ),
         "status": "fixed",
     },
@@ -97,17 +97,17 @@ DIAGNOSTICS: list[dict[str, Any]] = [
         "id": "HANDOFF-CONTRACT-KEPT",
         "severity": "info",
         "component": "src/osiris/server.py",
-        "title": "Refus de delegation non economique : ecarte volontairement",
+        "title": "Refusing uneconomic delegation: deliberately discarded",
         "symptom": (
-            "Un premier correctif refusait `osiris.handoff` sous le seuil "
-            "d'externalisation (800 tokens). Il rendait la gate verte, mais "
-            "cassait `test_handoff_create_returns_a_minimal_contract` : "
-            "l'API publique promettait un contrat."
+            "A first fix refused `osiris.handoff` below the externalization "
+            "threshold (800 tokens). It turned the gate green but broke "
+            "`test_handoff_create_returns_a_minimal_contract`: the public API "
+            "promised a contract."
         ),
-        "cause": "Un contrat de delegation n'est pas une externalisation de contexte : il reste utile sur une petite tache.",
+        "cause": "A delegation contract is not a context externalization: it stays useful on a small task.",
         "fix": (
-            "Correctif ecarte. `osiris.handoff` cree toujours un contrat ; "
-            "l'economie vient de `checkpoint`, pas d'un refus de delegation."
+            "Fix discarded. `osiris.handoff` always creates a contract; "
+            "the savings come from `checkpoint`, not from refusing delegation."
         ),
         "status": "fixed",
     },
@@ -115,15 +115,15 @@ DIAGNOSTICS: list[dict[str, Any]] = [
         "id": "BENCH-GATE-RED",
         "severity": "high",
         "component": "bench/run_bench.py",
-        "title": "La gate du benchmark echouait (exit 1)",
+        "title": "The benchmark gate was failing (exit 1)",
         "symptom": (
-            "`no_loss: false`, pire ecart -3.6 % a 200 tokens : OSIRIS coutait "
-            "plus qu'il ne gagnait sur les petites taches."
+            "`no_loss: false`, worst delta -3.6% at 200 tokens: OSIRIS cost "
+            "more than it saved on small tasks."
         ),
-        "cause": "Consequence directe du gap de compaction sur `checkpoint` (voir plus haut).",
+        "cause": "Direct consequence of the `checkpoint` compaction gap (see above).",
         "fix": (
-            "La gate repasse au vert (exit 0) : 200 tokens passe de -3.6 % a "
-            "+0.32 %. Le tableau du README a ete regenere sur la sortie reelle."
+            "The gate is green again (exit 0): 200 tokens went from -3.6% to "
+            "+0.32%. The README table was regenerated from the real output."
         ),
         "status": "fixed",
     },
@@ -131,33 +131,33 @@ DIAGNOSTICS: list[dict[str, Any]] = [
         "id": "README-CJK-CORRUPTION",
         "severity": "low",
         "component": "README.md",
-        "title": "Caracteres CJK parasites dans le README",
-        "symptom": "Section 11 : « table de prix用户提供 » (4 caracteres chinois).",
-        "cause": "Copier-coller depuis une source mixte.",
-        "fix": "Ligne corrigee en « table de prix fournie par l'utilisateur ».",
+        "title": "Stray CJK characters in the README",
+        "symptom": "Section 11: a price-table sentence ended with 4 stray Chinese characters.",
+        "cause": "Copy-paste from a mixed-language source.",
+        "fix": "Line fixed to read \"price table provided by the user\".",
         "status": "fixed",
     },
     {
         "id": "DOC-TEST-COUNT-DRIFT",
         "severity": "low",
         "component": "AGENTS.md",
-        "title": "Compte de tests divergent entre README et AGENTS.md",
-        "symptom": "README annonce 65 tests, AGENTS.md annonce 62 tests (2 occurrences).",
-        "cause": "Le compteur n'a pas ete suivi quand les tests ont ete ajoutes.",
-        "fix": "AGENTS.md aligne sur le compte reel (65).",
+        "title": "Test count differs between README and AGENTS.md",
+        "symptom": "README announces 65 tests, AGENTS.md announces 62 tests (2 occurrences).",
+        "cause": "The counter was not updated when tests were added.",
+        "fix": "AGENTS.md aligned on the real count (65).",
         "status": "fixed",
     },
     {
         "id": "README-BENCH-STALE",
         "severity": "medium",
         "component": "README.md",
-        "title": "Le tableau de benchmark du README ne se reproduisait plus",
+        "title": "The README benchmark table no longer reproduced",
         "symptom": (
-            "Les colonnes `baseline` concordaient, mais la colonne `adaptive` "
-            "annonca +15.3 % a 200 tokens la ou le code produisait -3.6 %."
+            "The `baseline` columns matched, but the `adaptive` column "
+            "claimed +15.3% at 200 tokens where the code produced -3.6%."
         ),
-        "cause": "Le tableau avait ete ecrit a une autre version du moteur, jamais regenere.",
-        "fix": "Tableau regenere depuis la sortie reelle de `python -m osiris bench`.",
+        "cause": "The table was written against another engine version and never regenerated.",
+        "fix": "Table regenerated from the real output of `python -m osiris bench`.",
         "status": "fixed",
     },
 ]
@@ -355,7 +355,7 @@ def api_tasks() -> dict[str, Any]:
 def api_task(task_id: str) -> dict[str, Any]:
     rows = _rows("SELECT * FROM tasks WHERE task_id = ?", (task_id,))
     if not rows:
-        return {"error": "task introuvable", "task_id": task_id}
+        return {"error": "task not found", "task_id": task_id}
     row = rows[0]
     try:
         state = json.loads(row["state_json"] or "{}")
@@ -511,8 +511,8 @@ def api_invariants() -> dict[str, Any]:
         "sources": sources,
         "engine": "src/osiris/core/invariants.py",
         "note": (
-            "Les invariants sont lus a la demande. Un invariant n'est que aussi bon "
-            "que le reporting de l'agent via osiris.observe."
+            "Invariants are read on demand. An invariant is only as good as "
+            "the agent's reporting through osiris.observe."
         ),
     }
 
@@ -522,7 +522,7 @@ def api_audit(task_id: str = "") -> dict[str, Any]:
         pointer = _home() / "current_task"
         task_id = pointer.read_text(encoding="utf-8").strip() if pointer.exists() else ""
     if not task_id:
-        return {"error": "aucune tache courante", "lossless": False}
+        return {"error": "no current task", "lossless": False}
     try:
         from osiris import audit as audit_mod
 
@@ -627,7 +627,7 @@ def _run_bench_isolated() -> dict[str, Any]:
         if marker in line:
             return json.loads(line.split(marker, 1)[1])
     raise RuntimeError(
-        "le benchmark n'a pas rendu de JSON (exit %s) : %s"
+        "the benchmark returned no JSON (exit %s): %s"
         % (proc.returncode, (proc.stderr or proc.stdout)[-400:])
     )
 
@@ -638,7 +638,7 @@ def api_bench(force: bool = False) -> dict[str, Any]:
         if fresh and not force:
             return {"cached": True, **(_BENCH["data"] or {})}
         if _BENCH["running"]:
-            return {"cached": False, "running": True, "note": "benchmark deja en cours"}
+            return {"cached": False, "running": True, "note": "benchmark already running"}
         _BENCH["running"] = True
 
     try:
@@ -734,7 +734,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "chemin refuse"}, 403)
             return
         if not path.exists() or not path.is_file():
-            self._json({"error": "introuvable", "path": rel}, 404)
+            self._json({"error": "not found", "path": rel}, 404)
             return
         self._send(200, path.read_bytes(), ctype)
 
@@ -749,11 +749,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path.startswith("/assets/"):
             rel = path[len("/assets/") :]
-            ctype = "text/css; charset=utf-8" if rel.endswith(".css") else "application/javascript; charset=utf-8"
+            ctype = (
+                "text/css; charset=utf-8" if rel.endswith(".css")
+                else "image/svg+xml" if rel.endswith(".svg")
+                else "application/javascript; charset=utf-8"
+            )
             self._file(rel, ctype)
             return
         if path == "/favicon.ico":
-            self._send(204, b"", "image/x-icon")
+            self._file("logo.svg", "image/svg+xml")
             return
 
         try:

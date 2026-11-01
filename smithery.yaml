@@ -1,0 +1,31 @@
+# Configuration Smithery (https://smithery.ai) pour OSIRIS.
+# Le serveur est distribue via npm (`osiris-mcp`) ; Python est resolu par le
+# lanceur (OSIRIS_PYTHON > uvx > python3 > python).
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      osirisHome:
+        type: string
+        title: OSIRIS_HOME
+        description: Repertoire d'etat OSIRIS (base SQLite, rapports, caches).
+        default: ~/.osiris
+      osirisRoots:
+        type: string
+        title: OSIRIS_ROOTS
+        description: Racines autorisees pour la lecture de fichiers, separees par ';'.
+        default: ""
+      osirisCacheTtl:
+        type: string
+        title: OSIRIS_CACHE_TTL_S
+        description: TTL du cache en secondes.
+        default: "300"
+  commandFunction: |-
+    (config) => {
+      const env = {};
+      if (config.osirisHome) env.OSIRIS_HOME = config.osirisHome;
+      if (config.osirisRoots) env.OSIRIS_ROOTS = config.osirisRoots;
+      if (config.osirisCacheTtl) env.OSIRIS_CACHE_TTL_S = config.osirisCacheTtl;
+      return { command: 'npx', args: ['-y', 'osiris-mcp'], env };
+    }

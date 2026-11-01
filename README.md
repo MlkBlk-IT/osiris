@@ -4,6 +4,11 @@
 
 # OSIRIS
 
+[![PyPI](https://img.shields.io/pypi/v/mcp-osiris?style=flat-square)](https://pypi.org/project/mcp-osiris/)
+[![npm](https://img.shields.io/npm/v/osiris-mcp?style=flat-square)](https://www.npmjs.com/package/osiris-mcp)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+
 **Cache-aware context engine & state governor for AI agents.** Standard MCP server, local-first, independent of any model provider.
 
 > OSIRIS makes AI agents cheaper, faster, and more reliable: fewer tokens, fewer loops, zero unnecessary tools, and zero loss of context.
@@ -262,7 +267,7 @@ uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
 ### CLI Verification
 
 ```powershell
-.venv\Scripts\python.exe -m pytest tests -q        # Run test suite (76 passed)
+.venv\Scripts\python.exe -m pytest tests -q        # Run test suite (77 passed)
 .venv\Scripts\python.exe -m ruff check src tests    # Code linting
 .venv\Scripts\python.exe -m osiris health           # Server health check
 .venv\Scripts\python.exe -m osiris audit --task t_1 # Cryptographic non-loss proof
@@ -287,6 +292,63 @@ Add to your client configuration (`mcp.json`):
   }
 }
 ```
+
+---
+
+## 12. Installation
+
+### From PyPI (recommended)
+
+```bash
+pip install mcp-osiris          # or: uv pip install mcp-osiris
+mcp-osiris                      # runs the MCP server on stdio
+osiris health                   # CLI verification
+osiris-dashboard --port 8770    # Control Plane (dashboard)
+```
+
+### From npm (no Python setup)
+
+```bash
+npx -y osiris-mcp
+```
+
+The npm package is a stdio launcher. It resolves the Python runtime in this
+order — `OSIRIS_PYTHON` → `uvx` → `python3` → `python` — and runs the PyPI
+package `mcp-osiris`.
+
+### From source
+
+```powershell
+git clone https://github.com/MlkBlk-IT/osiris.git
+cd osiris
+uv venv --python 3.12 .venv
+uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
+```
+
+### MCP client configuration
+
+```json
+{
+  "mcpServers": {
+    "osiris": {
+      "command": "npx",
+      "args": ["-y", "osiris-mcp"],
+      "env": {
+        "OSIRIS_HOME": "~/.osiris",
+        "OSIRIS_ROOTS": "/path/to/project"
+      }
+    }
+  }
+}
+```
+
+| Variable | Default | Role |
+|---|---|---|
+| `OSIRIS_HOME` | `~/.osiris` | SQLite database, reports, caches |
+| `OSIRIS_ROOTS` | *(empty)* | Roots allowed for file reading (`;` separated) |
+| `OSIRIS_CACHE_TTL_S` | `300` | Cache TTL (seconds) |
+| `OSIRIS_PRUNE_THRESHOLD_TOKENS` | `40000` | Prune threshold |
+| `OSIRIS_DISPATCH_ONLY` | `0` | `1` → exposes only `osiris.call` |
 
 ---
 

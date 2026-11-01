@@ -1,0 +1,54 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.MlkBlk-IT/osiris",
+  "description": "OSIRIS — context engine cache-aware pour agents IA. Serveur MCP local et provider-agnostic : filtrage serveur des payloads, ledger de contexte honnete, decisions append-only, garde-fous anti-boucle.",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/MlkBlk-IT/osiris",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "osiris-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "npx",
+      "environmentVariables": [
+        {
+          "name": "OSIRIS_HOME",
+          "description": "Repertoire d'etat OSIRIS : base SQLite, rapports, caches. Defaut ~/.osiris.",
+          "isRequired": false,
+          "default": "~/.osiris"
+        },
+        {
+          "name": "OSIRIS_ROOTS",
+          "description": "Racines autorisees pour la lecture de fichiers, separees par ';'. Vide = aucune lecture de fichier.",
+          "isRequired": false,
+          "default": ""
+        },
+        {
+          "name": "OSIRIS_CACHE_TTL_S",
+          "description": "TTL du cache en secondes.",
+          "isRequired": false,
+          "default": "300"
+        },
+        {
+          "name": "OSIRIS_PRUNE_THRESHOLD_TOKENS",
+          "description": "Seuil de prune en tokens.",
+          "isRequired": false,
+          "default": "40000"
+        },
+        {
+          "name": "OSIRIS_DISPATCH_ONLY",
+          "description": "1 = n'expose que l'outil osiris.call (table d'outils stable pour le prefix cache).",
+          "isRequired": false,
+          "default": "0"
+        }
+      ]
+    }
+  ]
+}

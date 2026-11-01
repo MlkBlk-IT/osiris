@@ -100,7 +100,7 @@ autorisées sont des **paquets PyPI publics** : `mcp`, `fastmcp`, `pydantic`,
 ## Commandes
 
 ```powershell
-.venv\Scripts\python.exe -m pytest tests -q         # 76 tests
+.venv\Scripts\python.exe -m pytest tests -q         # 77 tests
 .venv\Scripts\python.exe -m ruff check src tests bench scripts
 .venv\Scripts\python.exe -m osiris health
 .venv\Scripts\python.exe scripts\smoke_stdio.py     # E2E stdio
@@ -110,7 +110,7 @@ autorisées sont des **paquets PyPI publics** : `mcp`, `fastmcp`, `pydantic`,
 ## Cycle de développement
 
 1. Modifier dans `src/osiris/`.
-2. `pytest` doit rester vert (76 tests) et `ruff check` propre.
+2. `pytest` doit rester vert (77 tests) et `ruff check` propre.
 3. Si le comportement des outils change : mettre à jour `README.md` (section
    correspondante) et `tests/test_mcp_tools.py`.
 4. Ne jamais casser la preuve LOSSLESS (`tests/test_audit.py`).

@@ -4,9 +4,18 @@ version = "0.1.0"
 description = "OSIRIS — context engine cache-aware pour agents IA (serveur MCP local, provider-agnostic)."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Malik Belkacemi" }]
 keywords = ["mcp", "osiris", "context-engine", "prompt-cache", "agents", "cost", "memory"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 dependencies = [
     "mcp>=1.2.0",
@@ -28,13 +37,61 @@ dev = [
 [project.scripts]
 mcp-osiris = "osiris.server:main"
 osiris = "osiris.cli:main"
+osiris-dashboard = "osiris.dashboard.server:main"
+
+[project.urls]
+Homepage = "https://github.com/MlkBlk-IT/osiris"
+Repository = "https://github.com/MlkBlk-IT/osiris"
+Issues = "https://github.com/MlkBlk-IT/osiris/issues"
+Changelog = "https://github.com/MlkBlk-IT/osiris/blob/main/CHANGELOG.md"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/osiris"]
+
+# Le dashboard et le bench sont des artefacts de la distribution : ils sont
+# copies dans le wheel pour que `osiris-dashboard` et le endpoint /api/bench
+# fonctionnent apres `pip install mcp-osiris`.
+[tool.hatch.build.targets.wheel.force-include]
+"dashboard/__init__.py" = "osiris/dashboard/__init__.py"
+"dashboard/server.py" = "osiris/dashboard/server.py"
+"dashboard/web/index.html" = "osiris/dashboard/web/index.html"
+"dashboard/web/app.js" = "osiris/dashboard/web/app.js"
+"dashboard/web/styles.css" = "osiris/dashboard/web/styles.css"
+"dashboard/web/logo.svg" = "osiris/dashboard/web/logo.svg"
+"bench/__init__.py" = "osiris/bench/__init__.py"
+"bench/run_bench.py" = "osiris/bench/run_bench.py"
+"bench/fixtures/src/Profile.psm1" = "osiris/bench/fixtures/src/Profile.psm1"
+"bench/fixtures/tests/Profile.Tests.ps1" = "osiris/bench/fixtures/tests/Profile.Tests.ps1"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/dashboard",
+  "/bench",
+  "/scripts",
+  "/tests",
+  "/npm",
+  "/README.md",
+  "/LICENSE",
+  "/CHANGELOG.md",
+  "/AGENTS.md",
+  "/PUBLISH.md",
+  "/server.json",
+  "/smithery.yaml",
+  "/mcp.example.json",
+]
+exclude = [
+  "**/*.bak*",
+  "**/*.log",
+  "**/__pycache__",
+  "_backup_*",
+  "_livetest",
+  "data",
+]
 
 [tool.ruff]
 line-length = 100
