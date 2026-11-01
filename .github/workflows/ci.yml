@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install (projet + extras dev)
+        run: uv sync --python 3.12 --extra dev
+
+      - name: Tests
+        run: uv run pytest -q --no-header --tb=line
+
+      - name: Lint (ruff)
+        run: uv run ruff check src tests bench scripts
+
+      - name: Bench (gate de rentabilite)
+        run: uv run python bench/run_bench.py

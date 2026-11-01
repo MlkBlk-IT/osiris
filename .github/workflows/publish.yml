@@ -1,0 +1,57 @@
+name: Publish
+
+# Declenche par la publication d'une GitHub Release (tag vX.Y.Z).
+# Aucun secret n'est stocke dans le repo : PyPI et npm utilisent le
+# "Trusted Publishing" (OIDC, id-token: write).
+#
+# Prerequis (une seule fois, cote comptes) :
+#   - PyPI  : creer le projet `mcp-osiris` et declarer un publisher
+#             (repo MlkBlk-IT/osiris, workflow `publish.yml`, env `pypi`).
+#   - npm   : dans les settings du paquet, relier le repo GitHub
+#             (Trusted Publishing -> MlkBlk-IT/osiris, workflow publish.yml).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+      - name: Build sdist + wheel
+        run: uv build
+
+      - name: Verifie les metadonnees
+        run: uvx twine check dist/*
+
+      - name: Publie sur PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  npm:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: npm recent (trusted publishing >= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Publie sur npm
+        working-directory: npm
+        run: npm publish --provenance --access public
