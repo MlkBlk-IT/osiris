@@ -11,7 +11,6 @@
 <div class="bg-orb a"></div>
 <div class="bg-orb b"></div>
 <div class="bg-orb c"></div>
-<div class="bg-grid"></div>
 
 <div id="app">
 
@@ -26,34 +25,36 @@
     </div>
 
     <nav>
-      <div class="nav-label">Control</div>
+      <div class="nav-label">Watch</div>
       <div class="nav-item active" data-view="overview"><span class="ico">◈</span>Overview</div>
       <div class="nav-item" data-view="tasks"><span class="ico">◱</span>Tasks<span class="badge" id="b-tasks">0</span></div>
       <div class="nav-item" data-view="events"><span class="ico">≡</span>Journal<span class="badge" id="b-events">0</span></div>
 
-      <div class="nav-label">Context</div>
-      <div class="nav-item" data-view="prefix"><span class="ico">⬡</span>Manifest &amp; Prefix</div>
-      <div class="nav-item" data-view="memory"><span class="ico">◇</span>Memory<span class="badge" id="b-memory">0</span></div>
-      <div class="nav-item" data-view="refs"><span class="ico">⛁</span>Refs<span class="badge" id="b-refs">0</span></div>
-      <div class="nav-item" data-view="handoffs"><span class="ico">⇄</span>Handoffs<span class="badge" id="b-handoffs">0</span></div>
-
-      <div class="nav-label">Economy</div>
+      <div class="nav-label">Savings</div>
       <div class="nav-item" data-view="ledger"><span class="ico">▤</span>Ledger<span class="badge" id="b-ledger">0</span></div>
       <div class="nav-item" data-view="bench"><span class="ico">⚖</span>Benchmark</div>
 
-      <div class="nav-label">Security</div>
-      <div class="nav-item" data-view="loopguard"><span class="ico">∞</span>Loop guard<span class="badge" id="b-fp">0</span></div>
-      <div class="nav-item" data-view="invariants"><span class="ico">⊘</span>Invariants<span class="badge" id="b-inv">0</span></div>
-      <div class="nav-item" data-view="audit"><span class="ico">✓</span>LOSSLESS audit</div>
+      <div class="nav-label">Vault</div>
+      <div class="nav-item" data-view="refs"><span class="ico">⛁</span>Stored items<span class="badge" id="b-refs">0</span></div>
+      <div class="nav-item" data-view="memory"><span class="ico">◇</span>Memory<span class="badge" id="b-memory">0</span></div>
+      <div class="nav-item" data-view="prefix"><span class="ico">⬡</span>Manifest</div>
 
-      <div class="nav-label">System</div>
-      <div class="nav-item" data-view="tools"><span class="ico">⚙</span>MCP tools<span class="badge" id="b-tools">0</span></div>
-      <div class="nav-item" data-view="diagnostics"><span class="ico">⌁</span>Diagnostics<span class="badge" id="b-diag">0</span></div>
-      <div class="nav-item" data-view="config"><span class="ico">⌘</span>Configuration</div>
+      <div class="nav-label">Safety</div>
+      <div class="nav-item" data-view="audit"><span class="ico">✓</span>Integrity check</div>
+      <div class="nav-item" data-view="loopguard"><span class="ico">∞</span>Loop guard<span class="badge" id="b-fp">0</span></div>
 
       <div class="nav-label">Learn</div>
-      <div class="nav-item" data-view="quickstart"><span class="ico">➤</span>Quickstart</div>
       <div class="nav-item" data-view="help"><span class="ico">?</span>Help</div>
+      <div class="nav-item" data-view="quickstart"><span class="ico">➤</span>Quickstart</div>
+
+      <details class="nav-more">
+        <summary>Advanced</summary>
+        <div class="nav-item" data-view="handoffs"><span class="ico">⇄</span>Handoffs<span class="badge" id="b-handoffs">0</span></div>
+        <div class="nav-item" data-view="invariants"><span class="ico">⊘</span>Rules<span class="badge" id="b-inv">0</span></div>
+        <div class="nav-item" data-view="tools"><span class="ico">⚙</span>MCP tools<span class="badge" id="b-tools">0</span></div>
+        <div class="nav-item" data-view="diagnostics"><span class="ico">⌁</span>Diagnostics<span class="badge" id="b-diag">0</span></div>
+        <div class="nav-item" data-view="config"><span class="ico">⌘</span>Settings</div>
+      </details>
     </nav>
 
     <div class="side-foot">
@@ -74,17 +75,16 @@
   <!-- WORKSPACE -->
   <main id="workspace">
     <header id="topbar" class="glass">
-      <div class="kpi"><span class="v" id="k-tasks">—</span><span class="l">TASKS</span></div>
-      <div class="kpi"><span class="v" id="k-refs">—</span><span class="l">REFS</span></div>
-      <div class="kpi"><span class="v" id="k-events">—</span><span class="l">EVENTS</span></div>
-      <div class="kpi"><span class="v" id="k-saved">—</span><span class="l">TOKENS SAVED (PROVEN)</span></div>
-      <div class="kpi"><span class="v" id="k-moved">—</span><span class="l">TOKENS MOVED</span></div>
-      <div class="kpi"><span class="v" id="k-overhead">—</span><span class="l">OVERHEAD</span></div>
-      <div class="kpi"><span class="v" id="k-net">—</span><span class="l">NET GAIN</span></div>
-      <div class="kpi"><span class="v" id="k-integrity">—</span><span class="l">INTEGRITY</span></div>
+      <div class="page-title">
+        <h2 id="page-title">Overview</h2>
+        <p id="page-sub"></p>
+      </div>
       <div class="spacer"></div>
-      <button class="btn ghost" id="btn-refresh">⟳ Refresh</button>
-      <button class="btn ghost" id="btn-panel">◨ Panel</button>
+      <div class="kpi"><span class="v" id="k-saved">—</span><span class="l">tokens saved</span></div>
+      <div class="kpi"><span class="v" id="k-net">—</span><span class="l">net gain</span></div>
+      <div class="kpi"><span class="v" id="k-integrity">—</span><span class="l">integrity</span></div>
+      <button class="btn ghost" id="btn-refresh" title="Refresh (R)">⟳ Refresh</button>
+      <button class="btn ghost" id="btn-panel" title="Task panel (P)">◨ Task</button>
     </header>
 
     <section id="view"></section>
@@ -94,7 +94,7 @@
   <aside id="panel" class="glass">
     <div class="panel-head">
       <div>
-        <div class="panel-title">Task context</div>
+        <div class="panel-title">Selected task</div>
         <div class="panel-sub" id="panel-task">—</div>
       </div>
       <button class="icon-btn" id="btn-close-panel" title="Hide panel">×</button>
@@ -126,9 +126,9 @@
     </div>
 
     <div class="panel-sec">
-      <div class="sec-title">Actions</div>
+      <div class="sec-title">Shortcuts</div>
       <div class="actions">
-        <button class="btn" data-act="audit">Audit</button>
+        <button class="btn" data-act="audit">Integrity</button>
         <button class="btn" data-act="bench">Benchmark</button>
         <button class="btn" data-act="diag">Diagnostics</button>
         <button class="btn" data-act="refresh">Reload</button>

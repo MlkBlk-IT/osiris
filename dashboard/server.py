@@ -48,6 +48,11 @@ PROJECT = ROOT.parent
 WEB = ROOT / "web"
 
 sys.path.insert(0, str(PROJECT / "src"))
+# Le tray lance le dashboard avec le Python systeme, qui n'a pas fastmcp : la vue
+# "MCP tools" restait vide. On ajoute (en dernier) le venv du projet s'il existe.
+_VENV_SITE = PROJECT / ".venv" / "Lib" / "site-packages"
+if _VENV_SITE.is_dir() and str(_VENV_SITE) not in sys.path:
+    sys.path.append(str(_VENV_SITE))
 
 #: Benchmark mis en cache (le bench ecrit dans une base, on l'isole).
 _BENCH: dict[str, Any] = {"at": 0.0, "data": None, "running": False}

@@ -1139,7 +1139,8 @@ def osiris_recall(
         kind: Type de memoire.
         budget_tokens: Budget tokens.
         op: Operation de selection cote serveur quand `ref` est fourni :
-            excerpt | grep | range | head | tail | outline | aggregate | jsonl.
+            excerpt | grep | count | range | head | tail | outline | aggregate | jsonl.
+            (count = nombre de lignes qui matchent `query`, ~3 tokens.)
         start: Premiere ligne (1-based) pour op=range.
         end: Derniere ligne (inclusive) pour op=range.
 

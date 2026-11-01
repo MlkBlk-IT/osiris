@@ -16,6 +16,7 @@ Ce module ajoute des operations **cote serveur**, dont le resultat seul
 entre dans le contexte :
 
     grep      lignes qui matchent (regex ou litteral) + numeros de ligne
+    count     nombre de lignes qui matchent (meme regex que grep, ~3 tokens)
     range     plage de lignes (bornes inclusives, 1-based)
     head      N premieres lignes
     tail      N dernieres lignes
@@ -38,7 +39,7 @@ from typing import Any
 from osiris.core import refs
 from osiris.core.tokens import count_tokens
 
-OPS = ("excerpt", "grep", "range", "head", "tail", "outline", "aggregate", "jsonl")
+OPS = ("excerpt", "grep", "count", "range", "head", "tail", "outline", "aggregate", "jsonl")
 
 #: Ancres symboliques (approximation lexicale, sans parseur).
 _OUTLINE = re.compile(
@@ -166,6 +167,17 @@ def run(
             extra={"truncated_lines": max(0, len(hits) - limit)},
             budget_tokens=budget_tokens,
         )
+
+    if op == "count":
+        pattern = query or ""
+        if not pattern:
+            return {"found": True, "ref": ref, "op": op, "text": "", "note": "query vide"}
+        try:
+            regex = re.compile(pattern, re.IGNORECASE)
+        except re.error:
+            regex = re.compile(re.escape(pattern), re.IGNORECASE)
+        n = sum(1 for line in rows if regex.search(line))
+        return _result(ref, op, str(n), total_lines=total, matches=n)
 
     if op == "range":
         first = max(1, int(start or 1))
