@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.MlkBlk-IT/osiris",
-  "description": "OSIRIS — context engine cache-aware pour agents IA. Serveur MCP local et provider-agnostic : filtrage serveur des payloads, ledger de contexte honnete, decisions append-only, garde-fous anti-boucle.",
+  "description": "Cache-aware context engine for AI agents: server-side payload filtering, honest context ledger.",
   "status": "active",
   "repository": {
     "url": "https://github.com/MlkBlk-IT/osiris",
