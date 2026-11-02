@@ -6,6 +6,18 @@ Dernière mise à jour : 2026-11-01
 
 Osiris MCP tourne comme **task engine continu** de la session Hermes.
 
+### 🚧 WORK IN PROGRESS — v0.1.1
+
+- **Statut** : WIP (pas encore releasé)
+- **Commit** : `b51151e` sur `main` (pushed)
+- **Deadline release** : 7 jours (≤ 2026-11-08)
+- **Bloqueurs** :
+  - [ ] Valider le fix du loop-credit bug (P4 crédite 6599 faux savings sur observe #2)
+  - [ ] Valider l'effet de la DB unifiée après restart MCP server
+  - [ ] Confirmer que le dashboard affiche les nouveaux champs (`net_gain`, `loop_savings`, `pruned_refs`, `storage_cost`)
+- **Action requise pour release** : créer tag `v0.1.1` + GitHub Release → déclenche `publish.yml` (PyPI + npm)
+- **Ne PAS tagger/releaser avant validation complète**
+
 - Dossier : `D:\mcp-osiris`
 - Base : `D:\MCP-Osiris\data\home\osiris.db` (unifiée — MCP + dashboard lisent la même DB)
 - Serveur MCP déclaré dans Hermes (`mcp_servers`)
