@@ -5,6 +5,42 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-11-01
+
+### Fixed
+
+- **P0 — Adaptive threshold recalibration** (`adaptive.py`): thresholds
+  (`BYSTANDER_BELOW_TOKENS`, `EXTERNALIZE_MIN_TOKENS`, `MANIFEST_MIN_TOKENS`)
+  now recalibrate from the last N ledger tasks via median + 75th percentile,
+  bounded downward to floors. `reset_thresholds()` added for test isolation.
+- **P1 — Conditional schema access** (`server.py`): `_record_schema_access`
+  now imputes schema cost only when OSIRIS is engaged (bystander retracts);
+  measurement is lazy and cached in `adaptive.SCHEMA_ACCESS_TOKENS`.
+- **P2 — Token estimation calibration** (`tokens.py`): `update_calibration()`
+  measures tiktoken/cl100k_base exact count vs `chars/4` heuristic, tracks a
+  global ratio and sample count for confidence intervals.
+- **P3 — Stale ref pruning + storage cost** (`refs.py`, `ledger.py`): `prune_expired()`
+  removes only refs with expired TTL (optionally only never-relisted);
+  `storage_cost()` and `tokens_moved_exact()` added; prune runs in the
+  compaction checkpoint branch.
+- **P4 — Loop credit at proven reuse** (`ledger.py`): `credit_loop_savings`
+  credits duplicates only after provable reuse, respecting the
+  "no credit without acknowledgement" invariant. Wired into the `final` branch.
+- **P5 — Unified net-gain policy** (`decision.py`, new module): `net_gain(task_id)`
+  returns `{proved_savings, loop_savings, overhead, storage} → net`; exposed
+  in `plan(mode="status")`.
+- **Dashboard auto-refresh** (`app.js`): default interval lowered to 2 s;
+  2 s option added to the settings dropdown.
+- **AGENTS.md / README.md**: test count updated (77 → 99); bench table
+  refreshed from the latest `run_bench.py` output (access cost 1 038 tok,
+  net gate +972 tok, +71.48 % at 20 000 tok).
+
+### Added
+
+- `src/osiris/core/decision.py` — net-gain computation module (P5).
+- `tests/test_delta.py` — 18 validation tests covering P0–P5.
+- `DASHBOARDS-GUIDE.md` — quickstart for the Osiris and IcyLoom dashboards.
+
 ## [0.1.0] - 2026-10-31
 
 First public release.

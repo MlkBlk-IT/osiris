@@ -25,12 +25,13 @@ if str(_SRC) not in sys.path:
 import pytest  # noqa: E402
 
 from osiris.config import settings  # noqa: E402
-from osiris.core import db  # noqa: E402
+from osiris.core import adaptive, db  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 def clean_state():
     """Base propre avant et apres chaque test."""
+    adaptive.reset_thresholds()  # P0: restaurer les seuils par defaut
     db.reset_conn()
     for suffix in ("", "-wal", "-shm"):
         candidate = pathlib.Path(str(settings.db_path) + suffix)

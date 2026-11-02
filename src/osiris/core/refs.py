@@ -249,3 +249,51 @@ def list_refs(task_id: str | None = None, limit: int = 200) -> list[dict[str, An
         }
         for r in rows
     ]
+
+
+def prune_expired(max_age_s: float = 0, only_unaccessed: bool = True) -> dict[str, Any]:
+    """Supprime les refs expirees (TTL passe) et optionnellement jamais relues.
+
+    Invariant de securite : ne supprime que les refs dont le createur a
+    explicitement fixe un TTL (expires_at IS NOT NULL) ET qui sont expirees.
+    Si only_unaccessed=True, ne supprime que les refs qui n'ont aucune
+    trace de recall dans les evenements.
+
+    Retourne {removed, remaining, bytes_freed}.
+    """
+    conn = get_conn()
+    now = time.time()
+
+    sql = (
+        "SELECT ref, size_bytes, created_at, expires_at FROM refs"
+        " WHERE expires_at IS NOT NULL AND expires_at < ?"
+    )
+    params: list[Any] = [now]
+    if max_age_s > 0:
+        sql += " AND created_at < ?"
+        params.append(now - max_age_s)
+
+    rows = conn.execute(sql, params).fetchall()
+    removed = 0
+    bytes_freed = 0
+
+    for row in rows:
+        if only_unaccessed:
+            access = conn.execute(
+                "SELECT 1 FROM events WHERE kind = 'recall'"
+                " AND payload_json LIKE ? LIMIT 1",
+                (f'%{row["ref"]}%',),
+            ).fetchone()
+            if access is not None:
+                continue
+
+        conn.execute("DELETE FROM refs WHERE ref = ?", (row["ref"],))
+        removed += 1
+        bytes_freed += int(row["size_bytes"])
+
+    remaining = conn.execute("SELECT COUNT(*) AS n FROM refs").fetchone()["n"]
+    return {
+        "removed": removed,
+        "remaining": int(remaining),
+        "bytes_freed": bytes_freed,
+    }

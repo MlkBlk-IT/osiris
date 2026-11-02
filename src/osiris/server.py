@@ -309,25 +309,20 @@ def _task_volume(task_id: str) -> int:
         return 0
 
 
-async def _record_schema_access(task_id: str) -> None:
+async def _record_schema_access(task_id: str, engaged: bool = True) -> None:
     """Comptabilise une seule fois par tache le cout des schemas d'outils.
 
-    Sans cette entree, le ledger est optimiste de `SCHEMA_ACCESS_TOKENS` :
-    le client paie les schemas a chaque requete, pas OSIRIS. C'est le
-    correctif du biais signale par l'audit (schemas hors du net).
-
-    Cette entree est posee **des que le client appelle un outil OSIRIS** —
-    c'est la preuve que les schemas etaient charges. Elle ne depend donc pas
-    du mode d'engagement : une tache en `bystander` a quand meme coute les
-    schemas au client. (Si l'agent n'appelle jamais OSIRIS, OSIRIS ne peut
-    pas savoir que le client a charge ses schemas : reste invisible.)
+    La mesure du cout (measure_schema_tokens) s'effectue toujours, meme en
+    mode bystander : le client a charge les schemas. Mais l'imputation au
+    ledger ne se fait que si OSIRIS est engage (P1) : en bystander, il se
+    retire et ne compte pas ce qu'il n'a pas choisi de charger.
     """
     # Mesure paresseuse : `FastMCP.list_tools()` est async, donc le cout des
     # schemas ne peut pas etre connu avant la premiere tache. On le mesure ici
     # (on est deja dans une coroutine) puis on le met en cache dans
     # `adaptive.SCHEMA_ACCESS_TOKENS`.
     await measure_schema_tokens()
-    if SCHEMA_ACCESS_TOKENS <= 0:
+    if not engaged or SCHEMA_ACCESS_TOKENS <= 0:
         return
     row = (
         runtime.get_conn()
@@ -401,6 +396,9 @@ async def osiris_plan(
             overhead_tokens=ledger.overhead(state.task_id),
             phase_budgets=settings.phase_budgets,
         )
+        # P5: vue unifiee du gain net (module decision)
+        from osiris.core import decision as decision_mod
+        snapshot["net_gain"] = decision_mod.net_gain(state.task_id)
         runtime.save_task(state)
         return _finalize(
             state.task_id,
@@ -416,9 +414,6 @@ async def osiris_plan(
         if context_tokens > 0:
             state.flags["osiris_volume"] = context_tokens
             runtime.save_task(state)
-        # Les schemas sont payes a chaque requete du client, mais on les impute
-        # une seule fois par tache : c'est le plancher de cout d'OSIRIS.
-        await _record_schema_access(state.task_id)
     else:
         state = runtime.get_task(task_id)
         if state is None:
@@ -478,6 +473,12 @@ async def osiris_plan(
     state.flags["osiris_volume"] = declared
     state.flags["osiris_level"] = level
     state.flags["osiris_engaged"] = engaged
+
+    # P1: les schemas ne sont imputes que si OSIRIS est engage. En mode
+    # bystander, OSIRIS se retire : il ne compte pas les schemas qu'il n'a
+    # pas choisi de charger.
+    if mode == "start" and engaged:
+        await _record_schema_access(state.task_id, engaged=True)
 
     if adaptive.wants_full_manifest(declared) or declared == 0:
         manifest = _issue_manifest(state, analysis)
@@ -1277,6 +1278,11 @@ def osiris_checkpoint(label: str = "", mode: str = "snapshot", task_id: str = ""
             tokens_in=int(result.get("tokens", 0)),
             note=mode,
         )
+        # P3: prune les refs expirees (TTL passe) et jamais relues
+        pruned = refs.prune_expired(only_unaccessed=True)
+        if pruned["removed"] > 0:
+            result["pruned_refs"] = pruned["removed"]
+            result["bytes_freed"] = pruned["bytes_freed"]
         return _finalize(state.task_id, {"mode": mode, **result}, state)
 
     checkpoint = events.save_checkpoint(state.task_id, label, state.to_json())
@@ -1302,6 +1308,9 @@ def osiris_checkpoint(label: str = "", mode: str = "snapshot", task_id: str = ""
         payload["items_externalized"] = integrity["items_externalized"]
 
     if mode == "final":
+        # P4: crediter les economies de boucles (doublons evites) avant le
+        # rapport final — preuve : le 2e appel etait identique au 1er.
+        ledger.credit_loop_savings(state.task_id, state.budget)
         report = audit_mod.write_report(state.task_id)
         # Un rapport est un artefact sur disque, pas du contexte : on renvoie
         # un seul chemin (le markdown) + son digest. Les 3 rapports (md, json,

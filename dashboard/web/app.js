@@ -6,8 +6,8 @@
 const API = (p) => fetch(p).then((r) => r.json());
 const GH = { user: 'https://github.com/MlkBlk-IT', repo: 'https://github.com/MlkBlk-IT/osiris', issues: 'https://github.com/MlkBlk-IT/osiris/issues' };
 
-const S = { view: 'overview', taskId: null, health: null, overview: null, task: null, panelOpen: true, every: 15, timer: null };
-try { const e = Number(localStorage.getItem('osiris.every')); if ([0, 5, 15, 30, 60].includes(e)) S.every = e; } catch (e) {}
+const S = { view: 'overview', taskId: null, health: null, overview: null, task: null, panelOpen: true, every: 2, timer: null };
+try { const e = Number(localStorage.getItem('osiris.every')); if ([0, 2, 5, 15, 30, 60].includes(e)) S.every = e; } catch (e) {}
 
 const el = (id) => document.getElementById(id);
 const esc = (v) => String(v === null || v === undefined ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -397,7 +397,7 @@ const VIEWS = {
         ${card('Effective configuration', `<dl class="kv"><dt>Version</dt><dd>${esc(eff.version || '—')}</dd><dt>Home</dt><dd>${esc(eff.home || '—')}</dd><dt>Database</dt><dd>${esc(eff.db_path || '—')}</dd><dt>Allowed roots</dt><dd>${esc(eff.allowed_roots ? (eff.allowed_roots || []).join(', ') : '—')}</dd><dt>Tokenizer</dt><dd>${esc(eff.tokenizer || '—')}</dd><dt>Project</dt><dd>${esc(d.project || '—')}</dd></dl>
           <div class="cfg-note">Read-only view. Change values through the OSIRIS_* environment variables, then restart the MCP server.</div>`, 'runtime')}</div>
       <div class="grid c2">
-        ${card('Dashboard settings', `<dl class="kv"><dt>Auto-refresh</dt><dd><select id="cfg-every" class="btn" style="padding:5px 9px">${[[0, 'off'], [5, '5 s'], [15, '15 s'], [30, '30 s'], [60, '60 s']].map(([v, l]) => `<option value="${v}" ${S.every === v ? 'selected' : ''}>${l}</option>`).join('')}</select></dd><dt>Side panel</dt><dd><button class="btn" id="cfg-panel">${S.panelOpen ? 'Hide' : 'Show'}</button></dd></dl><div class="cfg-note">Settings apply instantly and are remembered in this browser.</div>`, 'local')}
+        ${card('Dashboard settings', `<dl class="kv"><dt>Auto-refresh</dt><dd><select id="cfg-every" class="btn" style="padding:5px 9px">${[[0, 'off'], [2, '2 s'], [5, '5 s'], [15, '15 s'], [30, '30 s'], [60, '60 s']].map(([v, l]) => `<option value="${v}" ${S.every === v ? 'selected' : ''}>${l}</option>`).join('')}</select></dd><dt>Side panel</dt><dd><button class="btn" id="cfg-panel">${S.panelOpen ? 'Hide' : 'Show'}</button></dd></dl><div class="cfg-note">Settings apply instantly and are remembered in this browser.</div>`, 'local')}
         ${card('Run the dashboard', `${code('python dashboard\\server.py --home <OSIRIS_HOME> --port 8770')}<div class="cfg-note">Flags: --host (default 127.0.0.1), --port (default 8770), --home.</div>`, 'cli')}
       </div>`;
     el('cfg-every').addEventListener('change', (e) => { S.every = Number(e.target.value); try { localStorage.setItem('osiris.every', S.every); } catch (x) {} schedule(); toast('auto-refresh: ' + (S.every ? S.every + ' s' : 'off')); });
@@ -557,5 +557,5 @@ document.addEventListener('keydown', (e) => {
 });
 
 boot().then(() => { paintFeed(); refreshIntegrity(); paintExtraBadges(); autoSelectTask(); });
-setInterval(paintFeed, 20000);
-setInterval(() => { refreshIntegrity(); paintExtraBadges(); }, 30000);
+setInterval(paintFeed, 3000);
+setInterval(() => { refreshIntegrity(); paintExtraBadges(); }, 5000);

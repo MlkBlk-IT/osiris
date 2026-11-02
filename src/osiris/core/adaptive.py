@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import json
 import os
+import statistics
 
 LEVEL_LIGHT = "light"
 LEVEL_STANDARD = "standard"
@@ -211,3 +212,73 @@ def guidance(level: str, payload_tokens: int) -> str:
     if level == LEVEL_FULL:
         return f"mode full ({payload_tokens} tok) : externalise, delgue"
     return f"mode standard ({payload_tokens} tok) : externalise les gros resultats"
+
+
+# ---- Recalibration des seuils sur donnees reelles (P0) ---------------------
+
+def recalibrate(
+    ledger_entries: list[dict],
+    *,
+    min_samples: int = 20,
+    floor_bystander: int = 200,
+    floor_externalize: int = 50,
+    floor_manifest: int = 400,
+) -> dict:
+    """Ajuste les seuils d'engagement selon la distribution observee.
+
+    Lit les entrees du ledger (tokens_in par observe) et calcule la
+    mediane et le 75e percentile. Les seuils sont ajustes de maniere
+    bornee vers le bas (floor). Retourne {adjusted, samples, median, q3,
+    old, new} sans modifier les globals si samples < min_samples.
+    """
+    global BYSTANDER_BELOW_TOKENS, EXTERNALIZE_MIN_TOKENS, MANIFEST_MIN_TOKENS
+
+    sizes = [
+        int(e.get("tokens_in", 0))
+        for e in ledger_entries
+        if e.get("kind") == "observe" and int(e.get("tokens_in", 0)) > 0
+    ]
+    if len(sizes) < min_samples:
+        return {
+            "adjusted": False,
+            "reason": f"insufficient samples ({len(sizes)} < {min_samples})",
+            "samples": len(sizes),
+        }
+
+    med = int(statistics.median(sizes))
+    q3 = int(statistics.quantiles(sizes, n=4)[2]) if len(sizes) >= 4 else int(med * 1.5)
+
+    old = {
+        "bystander": BYSTANDER_BELOW_TOKENS,
+        "externalize": EXTERNALIZE_MIN_TOKENS,
+        "manifest": MANIFEST_MIN_TOKENS,
+    }
+
+    new_bystander = max(floor_bystander, int(med * 0.5))
+    new_externalize = max(floor_externalize, int(med * 0.3))
+    new_manifest = max(floor_manifest, int(q3 * 0.5))
+
+    BYSTANDER_BELOW_TOKENS = new_bystander
+    EXTERNALIZE_MIN_TOKENS = new_externalize
+    MANIFEST_MIN_TOKENS = new_manifest
+
+    return {
+        "adjusted": True,
+        "samples": len(sizes),
+        "median": med,
+        "q3": q3,
+        "old": old,
+        "new": {
+            "bystander": new_bystander,
+            "externalize": new_externalize,
+            "manifest": new_manifest,
+        },
+    }
+
+
+def reset_thresholds() -> None:
+    """Restore les seuils aux valeurs par defaut (env-driven)."""
+    global BYSTANDER_BELOW_TOKENS, EXTERNALIZE_MIN_TOKENS, MANIFEST_MIN_TOKENS
+    BYSTANDER_BELOW_TOKENS = int(os.getenv("OSIRIS_BYSTANDER_BELOW_TOKENS", "600"))
+    EXTERNALIZE_MIN_TOKENS = int(os.getenv("OSIRIS_EXTERNALIZE_MIN_TOKENS", "120"))
+    MANIFEST_MIN_TOKENS = int(os.getenv("OSIRIS_MANIFEST_MIN_TOKENS", "800"))

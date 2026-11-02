@@ -285,6 +285,55 @@ def tokens_moved_exact(task_id: str) -> int:
     return int(row["n"])
 
 
+def storage_cost(task_id: str | None = None) -> dict[str, Any]:
+    """Cout de stockage des refs (taille totale en bytes et nombre)."""
+    conn = get_conn()
+    if task_id:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes), 0) AS bytes"
+            " FROM refs WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes), 0) AS bytes FROM refs"
+        ).fetchone()
+    return {
+        "refs": int(row["n"]),
+        "bytes": int(row["bytes"]),
+    }
+
+
+def credit_loop_savings(task_id: str, budget_state=None) -> int:
+    """Credite les economies des boucles bloquees (doublons evites).
+
+    Preuve : le 2e appel etait identique au 1er (meme fingerprint). Le
+    resultat etait deja en cache. L'agent a evite de re-executer.
+    Idempotent : ne recredite pas ce qui l'a deja ete.
+    """
+    row = (
+        get_conn()
+        .execute(
+            "SELECT COALESCE(SUM(tokens_saved), 0) AS n FROM ledger"
+            " WHERE task_id = ? AND kind = 'saving' AND note = 'loop_credit'",
+            (task_id,),
+        )
+        .fetchone()
+    )
+    already = int(row["n"])
+    if already > 0:
+        return already
+
+    avoided = loop_credits(task_id)
+    if avoided <= 0:
+        return 0
+
+    record(task_id, "saving", tokens_saved=avoided, note="loop_credit")
+    if budget_state is not None:
+        budget_state.tokens_saved += avoided
+    return avoided
+
+
 def net_saving(task_id: str) -> int:
     """Gain net = tokens economises - surcout propre d'OSIRIS.
 

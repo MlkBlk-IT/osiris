@@ -244,15 +244,15 @@ Real measurements from `python bench\run_bench.py` running an automated coding w
 
 | Payload Size | Baseline Context | Fixed OSIRIS | Adaptive OSIRIS | Net Improvement | OSIRIS Mode | Overhead |
 |---|---|---|---|---|---|---|
-| **200 tok** | 1,583 | 2,687 | **1,651** | **−4.30%** | bystander | 34 tok |
-| **800 tok** | 3,851 | 3,755 | **3,261** | **+15.32%** | light | 1,810 tok |
-| **2,000 tok** | 9,015 | 5,229 | **5,233** | **+41.95%** | standard | 2,492 tok |
-| **5,000 tok** | 20,979 | 8,171 | **8,168** | **+61.07%** | standard | 2,439 tok |
-| **20,000 tok** | 82,135 | 23,427 | **23,440** | **+71.46%** | full | 2,422 tok |
+| **200 tok** | 1,583 | 2,669 | **1,649** | **−4.17%** | bystander | 33 tok |
+| **800 tok** | 3,851 | 3,751 | **3,255** | **+15.48%** | light | 1,808 tok |
+| **2,000 tok** | 9,015 | 5,215 | **5,230** | **+41.99%** | standard | 2,494 tok |
+| **5,000 tok** | 20,979 | 8,164 | **8,162** | **+61.09%** | standard | 2,434 tok |
+| **20,000 tok** | 82,135 | 23,423 | **23,423** | **+71.48%** | full | 2,412 tok |
 
-- **Access Cost**: 1,019 tokens of schemas, amortized across session tasks.
-- **Session Net Gate**: PASS (Worst-case net across full suite: **+951 tokens**).
-- **At 20,000 tokens**: **+71.46% net savings** on context usage.
+- **Access Cost**: 1,038 tokens of schemas, amortized across session tasks.
+- **Session Net Gate**: PASS (Worst-case net across full suite: **+972 tokens**).
+- **At 20,000 tokens**: **+71.48% net savings** on context usage.
 
 ---
 
