@@ -619,8 +619,14 @@ def _run_bench_isolated() -> dict[str, Any]:
     env = dict(os.environ)
     env["PYTHONPATH"] = str(PROJECT / "src")
     env["PYTHONIOENCODING"] = "utf-8"
+    # Le tray lance le dashboard avec le Python systeme (sans fastmcp) : le bench
+    # plantait avec ModuleNotFoundError. On prefere l'interpreteur du venv projet.
+    venv_py = PROJECT / ".venv" / "Scripts" / "python.exe"
+    if not venv_py.exists():
+        venv_py = PROJECT / ".venv" / "bin" / "python"
+    interpreter = str(venv_py) if venv_py.exists() else sys.executable
     proc = subprocess.run(
-        [sys.executable, "-c", code],
+        [interpreter, "-c", code],
         cwd=str(PROJECT),
         env=env,
         capture_output=True,

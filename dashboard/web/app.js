@@ -324,11 +324,26 @@ const VIEWS = {
         `<span class="mono" style="color:var(--cyan)">${num(r.tokens_cached)}</span>`, `<span class="mono">${num(r.tokens_fresh)}</span>`, `<span class="mono" style="color:var(--emerald)">${num(r.tokens_saved)}</span>`, `<span class="mono muted">${esc((r.note || '').slice(0, 30))}</span>`]), num(rows.length) + ' entr(ies)')}`;
   },
 
-  async bench() {
-    const d = await API('/api/bench');
+  async bench(force) {
+    loading();
+    const d = await API('/api/bench' + (force === true ? '?force=1' : '')).catch((e) => ({ error: e.message, rows: [], gate: {} }));
     if (d.running) { el('view').innerHTML = '<div class="loading"><span class="spin">◌</span> benchmark running (isolated)…</div>'; setTimeout(() => { if (S.view === 'bench') VIEWS.bench(); }, 4000); return; }
     const rows = d.rows || [], g = d.gate || {};
-    el('view').innerHTML = `<div class="grid c3 mb">
+    const intro = `<div class="card glass mb"><h3>What is this page?</h3>
+      <p style="margin:6px 0 10px;line-height:1.55">This is a <b>lab test</b>, not live data from your tasks. It replays the <i>same fake job</i> (fix a bug, re-read a file, run tests) five times with different payload sizes (200 to 20,000 tokens), once <b>without</b> Osiris (baseline) and once <b>with</b> it, and counts how many tokens each run puts in the AI’s context. Result: <b>from what task size does Osiris actually save tokens, and from what size does it cost more than it saves?</b></p>
+      <ul style="margin:0 0 10px 18px;line-height:1.6">
+        <li><b>Benchmark gate</b>: GREEN = Osiris never loses tokens on any of the 5 sizes. RED = it loses somewhere (or the test failed to run).</li>
+        <li><b>Access cost</b>: tokens the 6 Osiris tool schemas add to <i>every</i> request.</li>
+        <li><b>Worst delta</b>: the worst saving across sizes (negative = Osiris costs more).</li>
+        <li><b>Payback</b>: how many tasks you need before the access cost is repaid.</li>
+      </ul>
+      <div class="chiprow"><button class="btn" id="bench-run">⟳ Re-run benchmark</button><span class="pill muted">takes a few seconds · cached 5 min · writes nothing to your database</span></div></div>`;
+    if (d.error || !rows.length) {
+      el('view').innerHTML = intro + `<div class="card"><h3>Benchmark did not run</h3><div class="mono-box" style="white-space:pre-wrap;max-height:260px;overflow:auto">${esc(d.error || 'The benchmark returned no rows.')}</div><div class="cfg-note">Not a real RED result: the test itself failed to start. Fix the error above, then click “Re-run benchmark”.</div></div>`;
+      const b = el('bench-run'); if (b) b.addEventListener('click', () => VIEWS.bench(true));
+      return;
+    }
+    el('view').innerHTML = intro + `<div class="grid c3 mb">
         ${stat(g.passed ? 'GREEN' : 'RED', 'Benchmark gate', g.criterion || '', g.passed ? 'emerald' : 'rose')}
         ${stat(num(d.access_tokens), 'Access cost', 'schema tokens per request', 'cyan')}
         ${stat((g.worst_adaptive_pct > 0 ? '+' : '') + num(g.worst_adaptive_pct) + ' %', 'Worst delta', 'adaptive mode vs baseline', g.worst_adaptive_pct >= 0 ? 'emerald' : 'rose')}</div>
@@ -340,6 +355,7 @@ const VIEWS = {
         `<span class="pill ${lvlCls(r.mode)}">${esc(r.mode)}</span>`, `<span class="mono" style="color:var(--amber)">${num(r.overhead_adaptive)}</span>`,
         `<span class="mono" style="color:${r.gain_tokens > 0 ? 'var(--emerald)' : 'var(--rose)'}">${sgn(r.gain_tokens)}</span>`, `<span class="mono">${r.payback_tasks === null ? '—' : num(r.payback_tasks) + ' task(s)'}</span>`]), 'baseline vs osiris')}
       <div style="margin-top:14px">${card('Method note', `<div class="mono-box">${esc(d.note || '—')}</div><div class="chiprow" style="margin-top:12px"><span class="pill ${g.passed ? 'ok' : 'bad'}">gate: ${g.passed ? 'pass' : 'fail'}</span><span class="pill muted">no_loss: ${g.no_loss === undefined ? '—' : g.no_loss}</span><span class="pill muted">success_equal: ${g.success_equal === undefined ? '—' : g.success_equal}</span></div>`, 'method')}</div>`;
+    const rb = el('bench-run'); if (rb) rb.addEventListener('click', () => VIEWS.bench(true));
   },
 
   async loopguard() {
