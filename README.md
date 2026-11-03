@@ -12,6 +12,14 @@
 **Cache-aware context engine & state governor for AI agents.** Standard MCP server, local-first, independent of any model provider.
 
 > OSIRIS makes AI agents cheaper, faster, and more reliable: fewer tokens, fewer loops, zero unnecessary tools, and zero loss of context.
+## What's new — 2026-11-03
+
+| Change | What it means |
+|---|---|
+| **P0–P5 landed** | Adaptive thresholds, conditional schema, token calibration, reference pruning, loop credit and the net-gain module. |
+| **Dashboard rebuilt** | Liquid UI, live updates, plus concurrency and ledger tests. |
+| **Stale task pointer cleared** | `get_task` now drops the current-task pointer when the task no longer exists. |
+| **v0.1.1 is still WIP** | The release stays blocked until validation (deadline 2026-11-08). |
 
 OSIRIS does not replace your other MCP servers (filesystem, Git, GitHub, shell, browser…). It **coexists** alongside them and drastically cuts what they cost in prompt context.
 
