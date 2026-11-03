@@ -66,6 +66,8 @@ def get_task(task_id: str | None = None) -> TaskState | None:
         return None
     row = get_conn().execute("SELECT state_json FROM tasks WHERE task_id = ?", (tid,)).fetchone()
     if row is None:
+        if task_id is None:
+            clear_current_task()
         return None
     try:
         return TaskState.loads(row["state_json"])
