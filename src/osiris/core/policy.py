@@ -24,6 +24,8 @@ DEFAULT_POLICY: dict[str, Any] = {
     "max_calls_per_tool": 40,
     "loop": {
         "duplicate_limit": 2,  # au-dela -> suggest_alternative
+        "duplicate_warn": 3,  # au-dela -> warn (escalade, BUG1)
+        "duplicate_block": 5,  # au-dela -> block (escalade, BUG1)
         "failure_limit": 3,  # au-dela -> block
         "oscillation_window": 8,
         "runaway_calls": 25,  # appels sans progres

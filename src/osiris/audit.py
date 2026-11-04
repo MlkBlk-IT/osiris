@@ -89,10 +89,16 @@ def audit_task(task_id: str) -> dict[str, Any]:
     )
 
     lossless = not violations and not bad_offsets
+    # BUG4 : "lossless" affirme sans AUCUNE verification reelle (0 ref relue,
+    # 0 hash compare) est un mensonge : quand rien n'a ete verifie, ce n'est
+    # pas une preuve de non-perte. `refs.get()` compare deja rellement
+    # sha256(relue) == digest == content_hash a chaque entree.
+    unverified = not all_refs
 
     return {
         "task_id": task_id,
-        "lossless": lossless,
+        "lossless": lossless and not unverified,
+        "unverified": unverified,
         "items_entered": items_entered,
         "items_externalized": len(all_refs),
         "items_verified": verified,

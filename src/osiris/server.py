@@ -46,6 +46,7 @@ from osiris.core.adaptive import (
 from osiris.core.errors import AccessDenied, InvalidInput
 from osiris.core.ids import hash_args, sha256_hex
 from osiris.core.manifest import build_manifest
+from osiris.core.policy import load_policy
 from osiris.core.task_state import FileEntry, ToolResultEntry
 from osiris.core.tokens import count_tokens
 
@@ -582,6 +583,10 @@ def osiris_precheck(
         flags=state.flags,
         budget_ok=state.budget.ok,
     )
+    # BUG2 : contraintes structurees du plan evaluees ici (deny direct).
+    violations += invariants.structured_constraint_violations(
+        list(state.constraints), action
+    )
     for violation in violations:
         reasons.append(f"{violation['id']}: {violation['message']}")
         invariant_id = invariant_id or violation["id"]
@@ -601,6 +606,9 @@ def osiris_precheck(
 
     # action destructive deja executee ?
     duplicate = False
+    duplicate_blocked = False
+    seen = 0
+    dup_block = 5
     if action:
         row = (
             runtime.get_conn()
@@ -611,18 +619,31 @@ def osiris_precheck(
             )
             .fetchone()
         )
-        duplicate = int(row["n"]) >= 1
+        seen = int(row["n"])
+        duplicate = seen >= 1
+        # BUG1 : au-dela du seuil block (configurable, defaut 5), le meme
+        # appel identique est refuse : precheck renvoie "deny".
+        dup_block = int(load_policy().get("loop.duplicate_block", 5))
+        duplicate_blocked = seen >= dup_block
 
     if duplicate:
         reasons.append("duplicate: appel identique deja journalise")
         alternative = "utilise le ref deja stocke au lieu de rejouer"
+    if duplicate_blocked:
+        reasons.append(
+            f"duplicate_blocked: appel identique repete {seen} fois "
+            f"(seuil {dup_block}), rejouer est refuse"
+        )
+        alternative = "stop_and_change_approach: utilise le ref deja stocke"
 
     # Ordre des verdicts : `suggest_alternative` doit rester atteignable.
     # Avant, `reasons` (non vide des qu'il y a un doublon) passait avant
     # `duplicate` : le verdict `suggest_alternative` etait du code mort.
     verdict = "allow"
-    if any(v["verdict"] == "block" for v in violations) or not state.budget.ok:
-        verdict = "block"
+    if any(v["verdict"] in ("block", "deny") for v in violations) or not state.budget.ok:
+        verdict = "deny" if any(v["verdict"] == "deny" for v in violations) else "block"
+    elif duplicate_blocked:
+        verdict = "deny"
     elif duplicate:
         verdict = "suggest_alternative"
     elif reasons or any(v["verdict"] == "warn" for v in violations):
@@ -927,6 +948,10 @@ def osiris_observe(
             hint = f"{verdict['reason']}: {verdict['detail']}"
         if verdict["verdict"] == "suggest_alternative":
             dup = True
+        if verdict["verdict"] in ("warn", "block") and verdict.get(
+            "reason"
+        ) == "exact_duplicate":
+            dup = True  # BUG1 : l'escalade reste un doublon exact
         events.append(
             state.task_id,
             "action",
@@ -1299,7 +1324,11 @@ def osiris_checkpoint(label: str = "", mode: str = "snapshot", task_id: str = ""
 
     payload: dict[str, Any] = {
         "checkpoint_id": checkpoint["checkpoint_id"],
-        "integrity": "lossless" if integrity["lossless"] else "violation",
+        "integrity": (
+            "lossless"
+            if integrity["lossless"]
+            else ("unverified" if integrity.get("unverified") else "violation")
+        ),
         "information_perdue": integrity["items_dropped"],
     }
     if not compact:
@@ -1391,11 +1420,12 @@ def osiris_handoff(
             state,
         )
 
-    # Les refs disponibles sont transmises au sous-agent : sans elles, le
-    # contrat de delegation transportait un contexte vide (`context_refs=None`
-    # code en dur) et le sous-agent relisait tout depuis zero.
-    context_refs = [entry.ref for entry in state.tool_results.values() if entry.ref]
-    context_refs += [entry.ref for entry in state.files.values() if entry.ref]
+    # BUG3 : le contrat ne porte QUE les refs explicites ou liees aux
+    # fichiers/must_know de CETTE mission. Avant, tout gros payload observe
+    # (state.tool_results) fuyait dans le contrat, meme sans rapport avec la
+    # mission. `handoff.create` ajoute lui-meme les refs des `files` passes
+    # (via state.files) ; ici on ne transmet rien d'autre.
+    context_refs: list[str] = []
 
     created = handoff.create(
         parent_task_id=state.task_id,

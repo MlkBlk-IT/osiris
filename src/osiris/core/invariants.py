@@ -193,3 +193,83 @@ def evaluate(
 def active_ids() -> list[str]:
     """Identifiants des invariants charges (pour le manifeste)."""
     return [str(r.get("id", "")) for r in load_rules() if r.get("id")]
+
+
+# ---------------------------------------------------------------------------
+# Contraintes structurees du plan (BUG2)
+# ---------------------------------------------------------------------------
+#
+# Une contrainte peut etre donnee sous forme structuree, en JSON :
+#   {"deny": ["filesystem.write_file", "*.delete_*"], "allow": ["..."]}
+# Les motifs sont des glob sur le nom de l'action (fnmatch, insensible a la
+# casse ; un motif sans joker matche l'action exacte ou son prefixe de
+# namespace). Le texte libre (non JSON) reste conserve tel quel par
+# runtime/task_state et n'est PAS evalue : il est signale comme note non
+# appliquee (constraint_notes).
+
+
+def parse_structured_constraint(
+    body: str,
+) -> tuple[dict[str, list[str]] | None, str | None]:
+    """(regle, None) si JSON structure, (None, note) sinon."""
+    text = (body or "").strip()
+    if text.startswith("{"):
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            return None, body
+        if isinstance(data, dict) and any(
+            isinstance(data.get(k), (list, tuple)) for k in ("deny", "allow")
+        ):
+            rule = {
+                "deny": [str(p) for p in data.get("deny", []) or []],
+                "allow": [str(p) for p in data.get("allow", []) or []],
+            }
+            return rule, None
+    return None, body
+
+
+def _pattern_matches(pattern: str, action: str) -> bool:
+    import fnmatch
+
+    pat = pattern.strip().lower()
+    act = action.strip().lower()
+    if fnmatch.fnmatch(act, pat):
+        return True
+    # "filesystem" matche "filesystem.write_file" (namespace)
+    return act.split(".")[0] == pat if "." not in pat and "*" not in pat else False
+
+
+def structured_constraint_violations(
+    constraints: list[str], action: str
+) -> list[dict[str, Any]]:
+    """Violations "deny" si une contrainte structuree interdit `action`."""
+    violations: list[dict[str, Any]] = []
+    action = (action or "").strip()
+    if not action:
+        return violations
+    for body in constraints or []:
+        rule, _note = parse_structured_constraint(body)
+        if rule is None:
+            continue
+        for pattern in rule.get("deny", []):
+            if _pattern_matches(pattern, action):
+                violations.append(
+                    {
+                        "id": f"constraint:{pattern}",
+                        "message": f"action interdite par constraint du plan: {pattern}",
+                        "verdict": "deny",
+                        "required_action": "choose_another_action",
+                    }
+                )
+    return violations
+
+
+def constraint_notes(constraints: list[str]) -> list[str]:
+    """Contraintes texte libre, conservees mais NON evaluees."""
+    notes: list[str] = []
+    for body in constraints or []:
+        _rule, note = parse_structured_constraint(body)
+        if note is not None and note.strip():
+            notes.append(note.strip())
+    return notes

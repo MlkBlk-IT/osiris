@@ -173,6 +173,8 @@ def record(
     """
     policy = load_policy()
     dup_limit = int(policy.get("loop.duplicate_limit", 2))
+    dup_warn = int(policy.get("loop.duplicate_warn", 3))
+    dup_block = int(policy.get("loop.duplicate_block", 5))
     failure_limit = int(policy.get("loop.failure_limit", 3))
     osc_window = int(policy.get("loop.oscillation_window", 8))
     runaway_calls = int(policy.get("loop.runaway_calls", 25))
@@ -209,6 +211,27 @@ def record(
             }
 
     if count >= dup_limit:
+        if count >= dup_block:
+            return {
+                "verdict": "block",
+                "reason": "exact_duplicate",
+                "fingerprint": fp,
+                "seen": count,
+                "limit": dup_block,
+                "detail": f"appel identique repete {count} fois (seuil block={dup_block})",
+                "alternative": "arrefe : rejouer cet appel n'est plus autorise, "
+                "change d'approche ou utilise le ref deja stocke",
+                "required_action": "stop_and_change_approach",
+            }
+        if count >= dup_warn:
+            return {
+                "verdict": "warn",
+                "reason": "exact_duplicate",
+                "fingerprint": fp,
+                "seen": count,
+                "detail": f"appel identique repete {count} fois (seuil warn={dup_warn})",
+                "alternative": "utilise le ref deja stocke au lieu de rejouer l'appel",
+            }
         return {
             "verdict": "suggest_alternative",
             "reason": "exact_duplicate",
