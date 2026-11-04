@@ -41,7 +41,7 @@ twine check dist\*
 
 ```powershell
 uv venv "$env:TEMP\osiris-install-test"
-uv pip install --python "$env:TEMP\osiris-install-test\Scripts\python.exe" dist\mcp_osiris-0.1.0-py3-none-any.whl
+uv pip install --python "$env:TEMP\osiris-install-test\Scripts\python.exe" dist\mcp_osiris-0.1.1-py3-none-any.whl
 
 # CLI
 & "$env:TEMP\osiris-install-test\Scripts\python.exe" -m osiris health
