@@ -121,7 +121,7 @@ Puis : <https://smithery.ai/server/@mlkblk/osiris>
 - `LICENSE` present → detection MIT automatique ✔
 - `CHANGELOG.md` present ✔
 - Section **Installation** du README a jour ✔
-- Badge PyPI / npm a ajouter dans le README (URL见 ci-dessous) :
+- Badge PyPI / npm a ajouter dans le README (URL ci-dessous) :
   - `https://img.shields.io/pypi/v/mcp-osiris`
   - `https://img.shields.io/npm/v/osiris-mcp`
 

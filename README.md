@@ -275,7 +275,7 @@ uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
 ### CLI Verification
 
 ```powershell
-.venv\Scripts\python.exe -m pytest tests -q        # Run test suite (77 passed)
+.venv\Scripts\python.exe -m pytest tests -q        # Run test suite (117 passed)
 .venv\Scripts\python.exe -m ruff check src tests    # Code linting
 .venv\Scripts\python.exe -m osiris health           # Server health check
 .venv\Scripts\python.exe -m osiris audit --task t_1 # Cryptographic non-loss proof
