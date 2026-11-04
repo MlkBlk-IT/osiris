@@ -19,7 +19,7 @@
 | **P0–P5 landed** | Adaptive thresholds, conditional schema, token calibration, reference pruning, loop credit and the net-gain module. |
 | **Dashboard rebuilt** | Liquid UI, live updates, plus concurrency and ledger tests. |
 | **Stale task pointer cleared** | `get_task` now drops the current-task pointer when the task no longer exists. |
-| **v0.1.1 is still WIP** | The release stays blocked until validation (deadline 2026-11-08). |
+| **v0.1.1 released on GitHub** | Validated 2026-11-03; tag and release `v0.1.1` are published. PyPI and npm still serve 0.1.0 until the packages are uploaded. |
 
 OSIRIS does not replace your other MCP servers (filesystem, Git, GitHub, shell, browser…). It **coexists** alongside them and drastically cuts what they cost in prompt context.
 
