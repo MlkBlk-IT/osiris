@@ -314,11 +314,18 @@ _INTEG: dict[str, Any] = {"at": 0.0, "v": "—"}
 
 
 def _integrity() -> str:
-    """Verdict LOSSLESS/VIOLATION de la tache courante, mis en cache 60 s."""
+    """Verdict LOSSLESS/UNVERIFIED/VIOLATION de la tache courante, mis en cache 60 s."""
     if time.time() - float(_INTEG["at"]) < 60:
         return str(_INTEG["v"])
     a = api_audit()
-    v = "—" if a.get("error") else ("LOSSLESS" if a.get("lossless") else "VIOLATION")
+    if a.get("error"):
+        v = "—"
+    elif a.get("lossless"):
+        v = "LOSSLESS"
+    elif a.get("unverified"):
+        v = "UNVERIFIED"
+    else:
+        v = "VIOLATION"
     _INTEG["at"] = time.time()
     _INTEG["v"] = v
     return v
@@ -349,7 +356,7 @@ def api_tasks() -> dict[str, Any]:
                 "volume": (state.get("flags") or {}).get("osiris_volume", 0),
                 "plan_done": _plan_counts(state)[0],
                 "plan_total": _plan_counts(state)[1],
-                "steps": len(state.get("constraints") or []),
+                "constraints": len(state.get("constraints") or []),
                 "files": len(state.get("files") or {}),
                 "decisions": len(state.get("decisions") or []),
             }
@@ -455,6 +462,14 @@ def api_ledger() -> dict[str, Any]:
 
 
 def api_loopguard() -> dict[str, Any]:
+    # Seuil "blocked" aligne sur la policy (BUG1 : block a 5, warn a 3),
+    # sinon la liste affiche des `warn` comme `block` (fausse mesure).
+    try:
+        from osiris.core.policy import load_policy
+
+        block_at = int(load_policy().get("loop.duplicate_block", 5))
+    except Exception:  # noqa: BLE001
+        block_at = 5
     return {
         "fingerprints": _rows(
             "SELECT task_id, fingerprint, tool, args_hash, result_sig, count, first_at, last_at"
@@ -465,7 +480,9 @@ def api_loopguard() -> dict[str, Any]:
             " FROM failures ORDER BY count DESC, last_at DESC LIMIT 200"
         ),
         "tool_usage": _rows("SELECT task_id, tool, calls, last_at FROM tool_usage ORDER BY calls DESC LIMIT 200"),
-        "blocked": _rows("SELECT task_id, fingerprint, tool, count FROM fingerprints WHERE count >= 3 ORDER BY count DESC"),
+        "blocked": _rows(
+            f"SELECT task_id, fingerprint, tool, count FROM fingerprints WHERE count >= {block_at} ORDER BY count DESC"
+        ),
     }
 
 

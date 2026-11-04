@@ -6,17 +6,15 @@ Dernière mise à jour : 2026-11-01
 
 Osiris MCP tourne comme **task engine continu** de la session Hermes.
 
-### 🚧 WORK IN PROGRESS — v0.1.1
+### ✅ v0.1.1 — validé (plus en WIP)
 
-- **Statut** : WIP (pas encore releasé)
+- **Statut** : validé par Malik (2026-11-03) — n'est plus en WIP ; tag `v0.1.1` pas encore créé (seul `v0.1.0` existe)
 - **Commit** : `b51151e` sur `main` (pushed)
-- **Deadline release** : 7 jours (≤ 2026-11-08)
-- **Bloqueurs** :
-  - [ ] Valider le fix du loop-credit bug (P4 crédite 6599 faux savings sur observe #2)
-  - [ ] Valider l'effet de la DB unifiée après restart MCP server
-  - [ ] Confirmer que le dashboard affiche les nouveaux champs (`net_gain`, `loop_savings`, `pruned_refs`, `storage_cost`)
-- **Action requise pour release** : créer tag `v0.1.1` + GitHub Release → déclenche `publish.yml` (PyPI + npm)
-- **Ne PAS tagger/releaser avant validation complète**
+- **Validation** (déclarée par Malik) :
+  - [x] Fix du loop-credit bug (P4 créditait 6599 faux savings sur observe #2)
+  - [x] Effet de la DB unifiée après restart MCP server
+  - [x] Dashboard affiche les nouveaux champs (`net_gain`, `loop_savings`, `pruned_refs`, `storage_cost`)
+- **Prochaine étape** : créer tag `v0.1.1` + GitHub Release → déclenche `publish.yml` (PyPI + npm)
 
 - Dossier : `D:\mcp-osiris`
 - Base : `D:\MCP-Osiris\data\home\osiris.db` (unifiée — MCP + dashboard lisent la même DB)
@@ -64,3 +62,13 @@ Chaque tour :
 - [x] Payloads > 100 tok → `osiris_observe`
 - [x] Lecture gros contexte via `osiris_recall`
 - [x] `osiris_checkpoint` aux jalons
+
+## Session 2026-11-04 — 4 bugs fixés (commit 50cef21)
+
+- Baseline avant modif : 117 passed ; après : **124 passed** (7 nouveaux tests `test_bugs_4.py`).
+- BUG1 LoopGuard : escalade `suggest → warn(3) → block(5)`, `precheck` → `deny` au-delà du seuil.
+- BUG2 Contraintes plan structurées JSON évaluées par `precheck` (texte libre = note non appliquée).
+- BUG3 Handoff : plus de fuite de refs sans rapport (contrat = refs explicites + fichiers de la mission).
+- BUG4 Intégrité honnête : `unverified` quand `items_verified == 0`, plus de `lossless` affirmé sans vérification.
+- Dashboard : badge `UNVERIFIED` au lieu de `VIOLATION` mensonger ; seuil "blocked" aligné sur la policy.
+- Ne pas toucher : tâche `t_0d594cf26c1b`, handoff `h_36a731ecbaeb`.

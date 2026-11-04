@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **LoopGuard escalation** (`loopguard.py`, `policy.py`, `server.py`):
+  exact duplicates now escalate `suggest_alternative -> warn (3) -> block (5)`
+  instead of suggesting forever; `precheck` returns `deny` past the block
+  threshold.
+- **Structured plan constraints** (`invariants.py`, `server.py`):
+  `{"deny": [...], "allow": [...]}` JSON constraints are now evaluated by
+  `precheck` (`verdict="deny"`, invariant + required_action); free text is
+  kept as an unapplied note.
+- **Handoff ref leak** (`server.py`): the contract no longer auto-collects
+  every observed payload; refs are explicit or tied to the mission's files
+  (default empty).
+- **Honest lossless** (`audit.py`, `server.py`): checkpoint returns
+  `integrity="unverified"` when `items_verified == 0` instead of claiming
+  `lossless`; `lossless` now requires a real hash re-read.
+- **Dashboard honesty** (`dashboard/server.py`): integrity shows `UNVERIFIED`
+  (not `VIOLATION`) when nothing was verified; the loopguard "blocked" list
+  uses the policy block threshold instead of a hardcoded 3.
+
+### Added
+
+- `tests/test_bugs_4.py` — 7 red->green regression tests (124 total).
+
 ## [0.1.1] - 2026-11-01
 
 ### Fixed
