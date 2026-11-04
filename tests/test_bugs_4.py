@@ -70,8 +70,6 @@ def test_bug3_handoff_with_file_keeps_related_ref() -> None:
     payload = "contenu de fichier lie a la mission " * 600
     server.osiris_observe(kind="payload", tool="t", result=payload, status="ok")
     # via kind=file sur un fichier reel sous OSIRIS_ROOTS (fixture conftest)
-    import pathlib
-
     from osiris.config import settings
 
     fpath = settings.home / "mission.txt"
