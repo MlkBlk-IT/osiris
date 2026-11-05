@@ -380,8 +380,10 @@ const VIEWS = {
 
   async audit() {
     const d = await API('/api/audit'), ok = d.lossless;
+    const verdict = ok ? 'LOSSLESS' : (d.unverified ? 'UNVERIFIED' : 'VIOLATION');
+    const vColor = ok ? 'emerald' : (d.unverified ? 'muted' : 'rose');
     el('view').innerHTML = `<div class="grid c4 mb">
-        ${stat(ok ? 'LOSSLESS' : 'VIOLATION', 'Verdict', d.task_id || '—', ok ? 'emerald' : 'rose')}${stat(num(d.items_externalized), 'Externalized', 'moved, never deleted', 'cyan')}
+        ${stat(verdict, 'Verdict', d.task_id || '—', vColor)}${stat(num(d.items_externalized), 'Externalized', 'moved, never deleted', 'cyan')}
         ${stat(num(d.items_verified), 'Verified', 'hash recomputed on read', 'violet')}${stat(num(d.items_dropped), 'Lost', 'must stay at 0', d.items_dropped ? 'rose' : 'emerald')}</div>
       <div class="grid c2">${card('Non-loss proof', `<div class="mono-box">${esc(JSON.stringify(d, null, 2))}</div>`, 'audit_task')}
       ${card('Mechanisms', `<dl class="kv"><dt>1. Refs</dt><dd>mem://sha256:&lt;hash&gt; — mismatch → integrity_error</dd><dt>2. Deletion</dt><dd>no code path deletes: prune moves</dd><dt>3. Audit</dt><dd>replayable from the append-only journal</dd></dl>
@@ -556,7 +558,7 @@ function panelAction(a) {
   if (a === 'audit') go('audit'); else if (a === 'bench') go('bench'); else if (a === 'diag') go('diagnostics'); else if (a === 'refresh') { refresh(true); paintFeed(); }
 }
 async function refreshIntegrity() {
-  try { const a = await API('/api/audit'); S.integrity = a.lossless === true ? 'LOSSLESS' : a.lossless === false ? 'VIOLATION' : '—'; el('k-integrity').textContent = S.integrity; el('k-integrity').parentElement.className = 'kpi ' + (S.integrity === 'LOSSLESS' ? 'good' : S.integrity === 'VIOLATION' ? 'bad' : ''); } catch (e) {}
+  try { const a = await API('/api/audit'); S.integrity = a.lossless === true ? 'LOSSLESS' : (a.unverified ? 'UNVERIFIED' : 'VIOLATION'); el('k-integrity').textContent = S.integrity; el('k-integrity').parentElement.className = 'kpi ' + (S.integrity === 'LOSSLESS' ? 'good' : S.integrity === 'VIOLATION' ? 'bad' : ''); } catch (e) {}
 }
 async function paintExtraBadges() {
   for (const [id, path] of [['b-inv', '/api/invariants'], ['b-tools', '/api/tools'], ['b-diag', '/api/diagnostics']]) { try { const d = await API(path); setBadge(id, d.count); } catch (e) {} }
