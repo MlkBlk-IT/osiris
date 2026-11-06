@@ -1,6 +1,6 @@
 [project]
 name = "mcp-osiris"
-version = "0.1.1"
+version = "0.1.2"
 description = "OSIRIS — context engine cache-aware pour agents IA (serveur MCP local, provider-agnostic)."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -61,6 +61,8 @@ packages = ["src/osiris"]
 "dashboard/web/index.html" = "osiris/dashboard/web/index.html"
 "dashboard/web/app.js" = "osiris/dashboard/web/app.js"
 "dashboard/web/styles.css" = "osiris/dashboard/web/styles.css"
+"dashboard/web/liquid.css" = "osiris/dashboard/web/liquid.css"
+"dashboard/web/live.js" = "osiris/dashboard/web/live.js"
 "dashboard/web/logo.svg" = "osiris/dashboard/web/logo.svg"
 "bench/__init__.py" = "osiris/bench/__init__.py"
 "bench/run_bench.py" = "osiris/bench/run_bench.py"

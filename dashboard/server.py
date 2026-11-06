@@ -32,6 +32,8 @@ Routes :
 from __future__ import annotations
 
 import argparse
+import hmac
+import ipaddress
 import json
 import os
 import sqlite3
@@ -57,6 +59,14 @@ if _VENV_SITE.is_dir() and str(_VENV_SITE) not in sys.path:
 #: Benchmark mis en cache (le bench ecrit dans une base, on l'isole).
 _BENCH: dict[str, Any] = {"at": 0.0, "data": None, "running": False}
 _BENCH_LOCK = threading.Lock()
+
+#: HotesConsideres comme « local » : seule une exposition reseau les rend
+#: accessibles depuis une autre machine.
+LOOPBACK_HOSTS = ("127.0.0.1", "::1", "localhost")
+
+#: Jeton d'authentification du dashboard. `None` = pas d'authentification,
+#: ce qui n'est acceptable qu'en loopback.
+AUTH_TOKEN: str | None = None
 
 #: Bugs detectes pendant l'audit, et correctifs appliques.
 #: Sert de source unique pour le panneau « Diagnostics » du dashboard.
@@ -168,8 +178,87 @@ DIAGNOSTICS: list[dict[str, Any]] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# exposition reseau : loopback strict + authentification
+# ---------------------------------------------------------------------------
+
+
+def is_loopback(host: str) -> bool:
+    """`host` n'expose-t-il que la machine locale ?"""
+    if host in LOOPBACK_HOSTS:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def check_exposure(host: str, allow_remote: bool, token: str) -> None:
+    """Verifie qu'une exposition reseau est Deliberee et authentifiee.
+
+    Le dashboard expose la memoire, le journal d'evenements, la
+    configuration effective et le store de refs : une ecoute sur le reseau
+    sans authentification divulgue des donnees locales. Le refus est donc
+    systematique, et l'echec est explicite plutot que silencieux.
+
+    Leve `SystemExit` avec un message actionnable.
+    """
+    global AUTH_TOKEN
+
+    if is_loopback(host):
+        # En local, l'authentification reste facultative : elle peut
+        # malgre tout etre activee avec --token.
+        AUTH_TOKEN = token or None
+        return
+
+    if not allow_remote:
+        raise SystemExit(
+            "Refus : --host %s expose le dashboard sur le reseau.\n"
+            "  Les API /api/memory, /api/events, /api/refs et /api/config "
+            "divulgent des donnees locales.\n"
+            "  Utilisez --host 127.0.0.1 (defaut) pour un acces local, ou\n"
+            "  ajoutez --allow-remote --token <JON> pour une exposition "
+            "deliberee et authentifiee." % host
+        )
+
+    if not token:
+        raise SystemExit(
+            "Refus : --allow-remote exige un jeton d'authentification.\n"
+            "  Un dashboard expose sur le reseau sans jeton laisse lire la\n"
+            "  memoire, les evenements et la configuration de la machine.\n"
+            "  Ajoutez --token <JON> (ou OSIRIS_DASHBOARD_TOKEN)."
+        )
+
+    AUTH_TOKEN = token
+
+
+def token_provided(headers: Any, query: dict[str, list[str]]) -> bool:
+    """Le jeton fourni correspond-il a celui attendu ?
+
+    Deux vecteurs acceptes :
+      - l'en-tete `Authorization: Bearer <jeton>` (clients, scripts) ;
+      - le parametre `?token=<jeton>` (navigateur : le dashboard etant une
+        appli web, l'en-tete n'est pas modifiable depuis la barre d'URL).
+    """
+    expected = AUTH_TOKEN
+    if not expected:
+        return True
+
+    header = headers.get("Authorization", "") or ""
+    if header.startswith("Bearer "):
+        if hmac.compare_digest(header[len("Bearer ") :].strip(), expected):
+            return True
+
+    supplied = (query.get("token") or [""])[0]
+    if supplied and hmac.compare_digest(supplied, expected):
+        return True
+
+    return False
+
+
 def _home() -> Path:
     return Path(os.environ.get("OSIRIS_HOME", Path.home() / ".osiris"))
+
 
 
 def _db_path() -> Path:
@@ -772,6 +861,21 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
         query = parse_qs(parsed.query)
 
+        # Les API exposent des donnees locales (memoire, evenements, refs,
+        # configuration) : elles sont protegees par jeton des que le
+        # dashboard est expose hors loopback. Les assets statiques restent
+        # ouverts pour que la page s'affiche et invite a s'authentifier.
+        if path.startswith("/api/") and not token_provided(self.headers, query):
+            self._json(
+                {
+                    "error": "unauthorized",
+                    "hint": "fournissez le jeton via l'en-tete 'Authorization: Bearer <JON>' "
+                    "ou le parametre '?token=<JON>'",
+                },
+                401,
+            )
+            return
+
         if path in ("/", "/index.html"):
             self._file("index.html", "text/html; charset=utf-8")
             return
@@ -832,15 +936,31 @@ def main() -> None:
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8770)
     ap.add_argument("--home", default="", help="OSIRIS_HOME a lire (defaut: env ou ~/.osiris)")
+    ap.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help="autorise une exposition reseau (exige --token)",
+    )
+    ap.add_argument(
+        "--token",
+        default=os.environ.get("OSIRIS_DASHBOARD_TOKEN", ""),
+        help="jeton d'authentification des API (ou OSIRIS_DASHBOARD_TOKEN)",
+    )
     args = ap.parse_args()
 
     if args.home:
         os.environ["OSIRIS_HOME"] = args.home
 
+    check_exposure(args.host, args.allow_remote, args.token)
+
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
     print("OSIRIS Control Plane -> http://%s:%d/" % (args.host, args.port))
     print("  db    : %s" % _db_path())
     print("  home  : %s" % _home())
+    if AUTH_TOKEN:
+        print("  auth  : jeton requis sur /api/* (Bearer ou ?token=)")
+    if not is_loopback(args.host):
+        print("  ALERTE : exposition reseau active sur %s" % args.host)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -277,7 +277,7 @@ uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
 ### CLI Verification
 
 ```powershell
-.venv\Scripts\python.exe -m pytest tests -q        # Run test suite (117 passed)
+.venv\Scripts\python.exe -m pytest tests -q        # Run test suite (146 passed)
 .venv\Scripts\python.exe -m ruff check src tests    # Code linting
 .venv\Scripts\python.exe -m osiris health           # Server health check
 .venv\Scripts\python.exe -m osiris audit --task t_1 # Cryptographic non-loss proof
@@ -315,6 +315,25 @@ mcp-osiris                      # runs the MCP server on stdio
 osiris health                   # CLI verification
 osiris-dashboard --port 8770    # Control Plane (dashboard)
 ```
+
+#### Dashboard network exposure
+
+The dashboard reads local data (memory, event journal, refs, effective
+configuration). It therefore **refuses any non-loopback bind by default**:
+
+```bash
+osiris-dashboard --host 0.0.0.0
+# Refus : --host 0.0.0.0 expose le dashboard sur le reseau. ...
+
+# Deliberate, authenticated exposure:
+osiris-dashboard --host 0.0.0.0 --allow-remote --token "$SECRET"
+```
+
+With a token set, every `/api/*` route requires it — via
+`Authorization: Bearer <token>` or the `?token=<token>` query parameter
+(needed because the dashboard is a web app). Open the dashboard with
+`http://<host>:<port>/?token=<token>`: the token is stored in
+`sessionStorage` and removed from the address bar.
 
 ### From npm (no Python setup)
 

@@ -11,7 +11,14 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Une combinaison cassee ne doit pas masquer les autres.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12', '3.13']
     steps:
       - uses: actions/checkout@v4
 
@@ -20,7 +27,7 @@ jobs:
           enable-cache: true
 
       - name: Install (projet + extras dev)
-        run: uv sync --python 3.12 --extra dev
+        run: uv sync --python ${{ matrix.python }} --extra dev
 
       - name: Tests
         run: uv run pytest -q --no-header --tb=line
@@ -30,3 +37,68 @@ jobs:
 
       - name: Bench (gate de rentabilite)
         run: uv run python bench/run_bench.py
+
+  # ------------------------------------------------------------------
+  # Test des ARTEFACTS distribues, pas seulement du code source.
+  # Le wheel force-include le dashboard et le bench : sans verification
+  # apres installation, une ressource omise (ou un import casse) n'apparait
+  # qu'a l'usage, chez l'utilisateur.
+  # ------------------------------------------------------------------
+  wheel:
+    name: wheel smoke test
+    runs-on: ${{ matrix.os }}
+    defaults:
+      # Le job tourne aussi sur Windows : le shell par defaut y serait
+      # PowerShell, incompatible avec les scripts ci-dessous.
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build sdist + wheel
+        run: uv build
+
+      - name: Verifie les metadonnees
+        run: uvx twine check dist/*
+
+      - name: Installe le wheel dans un env propre
+        run: |
+          set -euo pipefail
+          uv venv --python 3.12 .venv-wheel
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            PY=".venv-wheel/Scripts/python.exe"
+          else
+            PY=".venv-wheel/bin/python"
+          fi
+          uv pip install --python "$PY" dist/*.whl
+          echo "PY=$PY" >> "$GITHUB_ENV"
+
+      - name: Verifie les commandes installees
+        run: |
+          set -euo pipefail
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            BIN=".venv-wheel/Scripts"
+          else
+            BIN=".venv-wheel/bin"
+          fi
+          "$BIN/osiris" --help
+          "$BIN/osiris" health
+          "$BIN/osiris-dashboard" --help
+
+      - name: Verifie les ressources incluses dans le wheel
+        run: |
+          set -euo pipefail
+          "$PY" scripts/check_wheel_install.py
+
+      - name: Verifie que le dashboard installe demarre et repond
+        run: |
+          set -euo pipefail
+          "$PY" scripts/check_dashboard_serve.py

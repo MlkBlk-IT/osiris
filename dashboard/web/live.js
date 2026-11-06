@@ -10,6 +10,9 @@
   const col = (name, fb) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fb;
   const push = (a, x) => { a.push(x); if (a.length > N) a.shift(); };
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } } };
+  /* Jeton d'authentification : partage avec app.js (charge avant live.js). */
+  const AUTH = (() => { try { const t = sessionStorage.getItem('osiris.token'); return t ? { Authorization: 'Bearer ' + t } : {}; } catch (e) { return {}; } })();
+  const api = (p, opts) => fetch(p, Object.assign({ headers: AUTH }, opts || {}));
 
   /* ---------- build strip ---------- */
   const ws = $('#workspace'), view = $('#view');
@@ -105,7 +108,7 @@
     if (document.hidden) return;
     const t0 = performance.now(); n++;
     try {
-      const r = await fetch('/api/overview', { cache: 'no-store' }); const o = await r.json();
+      const r = await api('/api/overview', { cache: 'no-store' }); const o = await r.json();
       const lat = performance.now() - t0, T = o.totals || {}, C = o.counts || {};
       online = r.ok;
       push(B.t, Date.now()); push(B.saved, T.tokens_saved || 0); push(B.over, T.overhead || 0); push(B.net, T.net_gain || 0);
@@ -129,7 +132,7 @@
   const ago = (ts) => { const s = Math.max(0, Date.now() / 1000 - ts); return s < 60 ? Math.floor(s) + 's' : s < 3600 ? Math.floor(s / 60) + 'm' : s < 86400 ? Math.floor(s / 3600) + 'h' : Math.floor(s / 86400) + 'd'; };
   async function feed() {
     try {
-      const d = await (await fetch('/api/events', { cache: 'no-store' })).json(), items = (d.items || []).filter((e) => e.kind !== 'prefix');
+      const d = (await api('/api/events', { cache: 'no-store' })).json(), items = (d.items || []).filter((e) => e.kind !== 'prefix');
       if (!items.length) return;
       const box = $('#lv-feed'), fresh = items.filter((e) => e.seq > lastSeq).slice(0, first ? 6 : 4).reverse();
       lastSeq = Math.max(lastSeq, ...items.map((e) => e.seq));
@@ -147,7 +150,7 @@
   setInterval(() => document.querySelectorAll('#lv-feed .a').forEach((a) => { a.textContent = ago(+a.dataset.ts); }), 5000);
   async function seed() {
     try {
-      const d = await (await fetch('/api/ledger', { cache: 'no-store' })).json();
+      const d = (await api('/api/ledger', { cache: 'no-store' })).json();
       const it = (d.items || []).slice().sort((a, b) => a.ts - b.ts);
       if (it.length < 2) return;
       let s = 0, o = 0;

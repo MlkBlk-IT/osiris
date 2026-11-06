@@ -14,15 +14,72 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Verifie la publication sans publier (pack + metadata)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  # ------------------------------------------------------------------
+  # Preflight commun : verifie que la version du tag correspond a la
+  # version des manifestes, et que la version n'est pas deja publiee.
+  # Une release ne doit pas echouer 3 minutes plus tard sur un PUT.
+  # ------------------------------------------------------------------
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.versions.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Verifie la coherence des versions (tag / pyproject / npm)
+        id: versions
+        run: |
+          set -euo pipefail
+          PY=$(uv version --short)
+          NPM=$(node -p "require('./npm/package.json').version")
+          if [ "$PY" != "$NPM" ]; then
+            echo "::error::Version incoherente : pyproject=$PY npm=$NPM"
+            exit 1
+          fi
+          # Sur un tag, le tag fait foi. Sur un lancement manuel
+          # (workflow_dispatch), il n'y a pas de tag : la version vient des
+          # manifestes.
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME#v}"
+            if [ "$TAG" != "$PY" ]; then
+              echo "::error::Le tag v$TAG ne correspond pas a la version $PY"
+              exit 1
+            fi
+          else
+            TAG="$PY"
+          fi
+          echo "tag=$TAG pyproject=$PY npm=$NPM"
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Versions coherentes : $TAG"
+
+      - name: Verifie que la version n'est pas deja publiee
+        run: |
+          set -euo pipefail
+          VER="${{ steps.versions.outputs.version }}"
+          if npm view "osiris-mcp@$VER" version >/dev/null 2>&1; then
+            echo "::error::osiris-mcp@$VER est deja sur npm"
+            exit 1
+          fi
+          echo "osiris-mcp@$VER n'est pas encore publie"
+
   pypi:
+    needs: preflight
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -34,24 +91,135 @@ jobs:
       - name: Verifie les metadonnees
         run: uvx twine check dist/*
 
+      - name: Verifie que la version n'est pas deja sur PyPI
+        run: |
+          set -euo pipefail
+          VER="${{ needs.preflight.outputs.version }}"
+          if curl -fsS "https://pypi.org/pypi/mcp-osiris/$VER/json" >/dev/null 2>&1; then
+            echo "::error::mcp-osiris $VER est deja sur PyPI"
+            exit 1
+          fi
+          echo "mcp-osiris $VER n'est pas encore sur PyPI"
+
       - name: Publie sur PyPI (trusted publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
 
   npm:
+    needs: preflight
     runs-on: ubuntu-latest
     permissions:
+      # `contents: read` est requis par le checkout ; `id-token: write`
+      # est ce qui autorise l'echange OIDC. Les deux doivent etre declares :
+      # une permission non listee retombe a `none`.
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
 
+      # PAS de `registry-url` ici : setup-node ecrit alors
+      # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` dans le .npmrc.
+      # Sans secret NPM_TOKEN, la ligne s'expande en token VIDE : npm croit
+      # avoir des credentials, SAUTE l'echange OIDC, et fait un PUT anonyme
+      # -> 404 E404. C'est le bug actions/setup-node#1551.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
 
-      - name: npm recent (trusted publishing >= 11.5.1)
-        run: npm install -g npm@latest
+      # Trusted publishing exige npm >= 11.5.1. On pinne npm@11 : npm@latest
+      # peut flotter vers npm@12, qui aintroduit un mode "staged version"
+      # (la version occupee sans etre visible -> 409 au second essai).
+      - name: npm recent pour le trusted publishing
+        run: |
+          set -euo pipefail
+          npm install -g npm@11
+          npm --version
+
+      - name: Verifie qu'aucun credential npm n'est configure
+        run: |
+          set -euo pipefail
+          RC="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          if [ -f "$RC" ] && grep -q '_authToken' "$RC"; then
+            echo "::error::Un token npm est present dans $RC : l'echange OIDC serait saute."
+            echo "::error::Supprimez la ligne _authToken (ou retirez registry-url de setup-node)."
+            exit 1
+          fi
+          echo "Aucun credential configure : l'echange OIDC sera utilise"
+
+      # L'echange OIDC se fait en deux temps, comme le fait npm lui-meme :
+      #   1. GitHub mint un id_token (audience npm:registry.npmjs.org)
+      #   2. le registre l'echange contre un token de publication
+      # Un 404 a l'etape 2 signifie "pas de Trusted Publisher pour ce
+      # paquet" : on echoue AVANT le PUT avec le vrai motif, au lieu d'un
+      # 404 trompeur a la publication.
+      - name: Verifie que l'echange OIDC aboutit
+        run: |
+          set -euo pipefail
+          PKG="osiris-mcp"
+          ID_TOKEN=$(curl -fsS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" \
+            | python3 -c "import json,sys;print(json.load(sys.stdin)['value'])")
+          CODE=$(curl -sS -o /tmp/exchange.json -w '%{http_code}' \
+            -X POST -H "Authorization: bearer $ID_TOKEN" \
+            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/$PKG")
+          echo "HTTP $CODE"
+          cat /tmp/exchange.json; echo
+          if [ "$CODE" -lt 200 ] || [ "$CODE" -ge 300 ]; then
+            echo "::error::L'echange OIDC npm a repondu $CODE (2xx attendu)."
+            echo "::error::Si 404 : le Trusted Publisher du paquet '$PKG' n'est pas configure."
+            echo "::error::Configurez-le sur https://www.npmjs.com/package/$PKG/settings/access"
+            echo "::error::-> Provider: GitHub Actions, Repository: MlkBlk-IT/osiris,"
+            echo "::error::   Workflow filename: publish.yml, Environment: (vide)"
+            exit 1
+          fi
+          if ! grep -q '"token"' /tmp/exchange.json; then
+            echo "::error::L'echange a repondu 2xx sans token : echange incomplet."
+            exit 1
+          fi
+          echo "Echange OIDC abouti : le Trusted Publisher npm est operationnel"
+
+      - name: Pack (verification du contenu)
+        if: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          cd npm
+          npm pack --dry-run
 
       - name: Publie sur npm
+        if: ${{ !inputs.dry_run }}
         working-directory: npm
-        run: npm publish --provenance --access public
+        run: |
+          set -euo pipefail
+          set +e
+          OUT=$(npm publish --provenance --access public --loglevel verbose 2>&1)
+          CODE=$?
+          printf '%s\n' "$OUT"
+          set -e
+          if [ "$CODE" -eq 0 ]; then
+            exit 0
+          fi
+          if printf '%s\n' "$OUT" | grep -qiE 'Cannot publish over previously staged version|code E409'; then
+            echo "::error::La version est deja stagee par un run precedent (E409)."
+            echo "::error::C'est le mode 'staged' de npm@12 : la version occupee n'est pas visible."
+            echo "::error::Attendez la promotion par le scan npm, ne bumpez pas la version."
+            exit 1
+          fi
+          exit "$CODE"
+
+      # `+ pkg@version` ne prouve rien : le registre peut encore scanner le
+      # tarball avant de le servir. On verifie la presence reelle.
+      - name: Verifie que la version est servie par le registre
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          PKG="osiris-mcp"
+          VER="${{ needs.preflight.outputs.version }}"
+          for i in $(seq 1 45); do
+            if npm view "$PKG@$VER" version >/dev/null 2>&1; then
+              echo "$PKG@$VER est en ligne sur le registre"
+              exit 0
+            fi
+            echo "tentative $i/45 : $PKG@$VER pas encore visible (scan npm), attente 20s"
+            sleep 20
+          done
+          echo "::error::$PKG@$VER n'est pas sur le registre apres 15 minutes."
+          exit 1

@@ -41,17 +41,41 @@ twine check dist\*
 
 ```powershell
 uv venv "$env:TEMP\osiris-install-test"
-uv pip install --python "$env:TEMP\osiris-install-test\Scripts\python.exe" dist\mcp_osiris-0.1.1-py3-none-any.whl
+uv pip install --python "$env:TEMP\osiris-install-test\Scripts\python.exe" dist\mcp_osiris-0.1.2-py3-none-any.whl
 
 # CLI
 & "$env:TEMP\osiris-install-test\Scripts\python.exe" -m osiris health
 & "$env:TEMP\osiris-install-test\Scripts\osiris.exe" --help
+
+# verification complete de l'artefact installe (ressources + gate du bench)
+& "$env:TEMP\osiris-install-test\Scripts\python.exe" scripts\check_wheel_install.py
 
 # dashboard installe (assets web inclus dans le wheel)
 & "$env:TEMP\osiris-install-test\Scripts\osiris-dashboard.exe" --port 8780
 ```
 
 ## 3. Publication PyPI
+
+### 3a. Via la CI (Trusted Publishing — recommande)
+
+Le job `pypi` du workflow utilise l'OIDC : aucun jeton a stocker.
+
+Prerequis (une seule fois, dans le navigateur) :
+<https://pypi.org/manage/project/mcp-osiris/settings/publishing/>
+
+| Champ | Valeur |
+|---|---|
+| Provider | GitHub Actions |
+| Organization / user | `MlkBlk-IT` |
+| Repository | `osiris` |
+| Workflow filename | `publish.yml` |
+| Environment name | `pypi` |
+
+> L'environnement GitHub `pypi` existe deja sur le repo. Sans cette
+> declaration cote PyPI, la publication echoue avec
+> `invalid-publisher: valid token, but no corresponding publisher`.
+
+### 3b. Manuelle (jeton API)
 
 ```powershell
 # 1) recuperer un jeton : https://pypi.org/manage/account/token/ (scope "PyPI")
@@ -65,15 +89,55 @@ Vérification : <https://pypi.org/project/mcp-osiris/>
 
 ## 4. Publication npm
 
+### 4a. Via la CI (Trusted Publishing — recommande)
+
+Le workflow `.github/workflows/publish.yml` publie automatiquement a la sortie
+d'une GitHub Release. **Aucun secret npm n'est necessaire** : l'authentification
+repose sur l'echange OIDC (trusted publishing).
+
+Prerequis (une seule fois, dans le navigateur) :
+<https://www.npmjs.com/package/osiris-mcp/settings/access>
+
+| Champ | Valeur |
+|---|---|
+| Provider | GitHub Actions |
+| Organization / user | `MlkBlk-IT` |
+| Repository | `osiris` |
+| Workflow filename | `publish.yml` |
+| Environment name | *(vide)* |
+
+> **Pourquoi le workflow echouait avec `E404`.** `actions/setup-node` ecrit
+> `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` dans le `.npmrc` des
+> que `registry-url` est renseigne. Sans secret `NPM_TOKEN`, cette ligne
+> s'expande en token **vide** : npm croit avoir des credentials, **saute
+> l'echange OIDC**, et fait un `PUT` anonyme -> `404 Not Found`.
+> Le workflow retire donc `registry-url`, pinne `npm@11` (le trusted
+> publishing exige npm >= 11.5.1) et **verifie l'echange OIDC avant de
+> publier** : si le Trusted Publisher manque, l'erreur le dit explicitement
+> au lieu d'afficher un 404 trompeur.
+
+Le workflow verifie aussi que la version du tag correspond a `pyproject.toml`
+et a `npm/package.json`, et que la version n'est pas deja publiee.
+
+Rejouer une publication sans nouvelle release :
+<https://github.com/MlkBlk-IT/osiris/actions/workflows/publish.yml> -> *Run
+workflow* (cocher `dry_run` pour verifier sans publier).
+
+### 4b. Manuelle (depuis la machine)
+
 ```powershell
 Set-Location 'D:\MCP-Osiris\npm'
 
-# compte : npm whoami   (doit etre en conflit avec un 2FA : npm token create)
+npm whoami                                   # doit afficher mlkblkit
 npm publish --access public --otp <CODE_2FA>
 
-npm view osiris-mcp          # verification
-npx -y osiris-mcp            # test de lancement
+npm view osiris-mcp                         # verification
+npx -y osiris-mcp                           # test de lancement
 ```
+
+> Le token npm local est actuellement **expire** (`npm whoami` -> `401`) :
+> regenerer un token sur <https://www.npmjs.com/settings/tokens> (type
+> *Automation*) avant d'utiliser cette voie.
 
 ## 5. Soumission au registre MCP officiel
 
@@ -138,5 +202,13 @@ Puis : <https://smithery.ai/server/@mlkblk/osiris>
 ### En cas de blocage
 
 - `twine upload` : `403` → le nom `mcp-osiris` est deja pris ou le jeton est invalide.
+- `twine upload` : `invalid-publisher` → le publisher Trusted Publishing PyPI
+  n'est pas declare (voir 3a). La declaration se fait dans le navigateur.
+- `npm publish` : `E404` → le Trusted Publisher npm ne correspond pas (voir 4a :
+  repo / workflow / environment), ou un token npm vide est present dans le
+  `.npmrc` et fait sauter l'echange OIDC.
+- `npm publish` : `E409 Cannot publish over previously staged version` → la
+  version est deja occupee par un run precedent (mode *staged* de npm 12).
+  Attendre la promotion par le scan npm, **ne pas** bumper la version.
 - `npm publish` : `E403` → 2FA ( `--otp` ) ou nom de paquet deja pris.
 - Registre MCP : `server.json` invalide → schema <https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json>

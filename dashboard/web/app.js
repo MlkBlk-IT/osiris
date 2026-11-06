@@ -3,7 +3,24 @@
    ============================================================================= */
 'use strict';
 
-const API = (p) => fetch(p).then((r) => r.json());
+/* --- auth : jeton optionnel (dashboard expose hors loopback) ---------------
+   Le jeton arrive dans l'URL (?token=...), on le memorize puis on le retire
+   de la barre d'adresse pour ne pas le laisser dans l'historique. */
+const QS = new URLSearchParams(location.search);
+const TOKEN = (() => {
+  let t = QS.get('token') || '';
+  if (!t) { try { t = sessionStorage.getItem('osiris.token') || ''; } catch (e) {} }
+  if (!t) return '';
+  try { sessionStorage.setItem('osiris.token', t); } catch (e) {}
+  if (QS.get('token')) {
+    QS.delete('token');
+    history.replaceState(null, '', location.pathname + (QS.toString() ? '?' + QS : ''));
+  }
+  return t;
+})();
+const AUTH = TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {};
+
+const API = (p) => fetch(p, { headers: AUTH }).then((r) => r.json());
 const GH = { user: 'https://github.com/MlkBlk-IT', repo: 'https://github.com/MlkBlk-IT/osiris', issues: 'https://github.com/MlkBlk-IT/osiris/issues' };
 
 const S = { view: 'overview', taskId: null, health: null, overview: null, task: null, panelOpen: true, every: 2, timer: null };

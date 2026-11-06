@@ -7,8 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-06
+
 ### Fixed
 
+- **npm publication (E404)** (`.github/workflows/publish.yml`): the `npm` job
+  used `actions/setup-node` with `registry-url`, which writes
+  `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into `.npmrc`. With no
+  `NPM_TOKEN` secret that line expands to an **empty** token: npm assumed
+  credentials were configured, **skipped the OIDC token exchange**, and sent an
+  anonymous `PUT` -> `404 Not Found` (root cause of the failed `v0.1.1`
+  release). `registry-url` is removed, npm is pinned to `npm@11` (trusted
+  publishing needs >= 11.5.1; npm 12 introduced a "staged version" mode where a
+  published version stays invisible), and the OIDC exchange is now verified
+  **before** the publish, so a missing Trusted Publisher fails with the exact
+  remedy instead of a misleading 404. The published version is also verified
+  against the registry afterwards.
+- **Dashboard network exposure** (`dashboard/server.py`): the dashboard listened
+  on any `--host` without authentication, while `/api/memory`, `/api/events`,
+  `/api/refs` and `/api/config` disclose local data. A non-loopback bind is now
+  refused unless `--allow-remote` is passed, and `--allow-remote` requires a
+  token (`--token` or `OSIRIS_DASHBOARD_TOKEN`). API routes return `401` without
+  a valid token (accepted via `Authorization: Bearer` or `?token=`).
+- **Wheel resources** (`pyproject.toml`): `dashboard/web/liquid.css` and
+  `dashboard/web/live.js` were referenced by `index.html` but missing from the
+  wheel's `force-include`, so an installed dashboard had broken CSS and no live
+  layer.
+- **Version drift** (`config.py`): `settings.version` reported `0.1.0` while
+  `pyproject.toml` was at `0.1.1`.
 - **LoopGuard escalation** (`loopguard.py`, `policy.py`, `server.py`):
   exact duplicates now escalate `suggest_alternative -> warn (3) -> block (5)`
   instead of suggesting forever; `precheck` returns `deny` past the block
@@ -27,9 +53,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (not `VIOLATION`) when nothing was verified; the loopguard "blocked" list
   uses the policy block threshold instead of a hardcoded 3.
 
+### Changed
+
+- **Versioned migrations** (`core/db.py`): the schema is now versioned by
+  `PRAGMA user_version`. Each migration is numbered, transactional and replayed
+  only once. The blanket `except sqlite3.OperationalError: pass` was replaced
+  by an explicit column-existence check, so a genuine schema error propagates
+  instead of being swallowed -- a database can no longer start with a
+  half-applied migration.
+- **CI matrix** (`.github/workflows/ci.yml`): tests now run on
+  `ubuntu-latest` **and** `windows-latest`, on Python **3.12 and 3.13**
+  (the project supports `>=3.12` and documents Windows usage).
+- **Wheel smoke test** (`.github/workflows/ci.yml`): a dedicated job builds the
+  wheel, installs it in a clean environment, and checks the `osiris` /
+  `osiris-dashboard` commands, the packaged resources and the benchmark gate --
+  the artefacts users actually install, not only the source tree.
+
 ### Added
 
-- `tests/test_bugs_4.py` — 7 red->green regression tests (124 total).
+- `tests/test_db_migrations.py` -- 8 migration tests (legacy upgrade, idempotence,
+  rollback, non-swallowed errors).
+- `tests/test_dashboard_exposure.py` -- 14 exposure tests (loopback policy,
+  token verification, real HTTP `401`/`200`).
+- `tests/test_bugs_4.py` -- 7 red->green regression tests (124 total).
 
 ## [0.1.1] - 2026-11-01
 

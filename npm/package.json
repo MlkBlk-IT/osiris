@@ -1,6 +1,6 @@
 {
   "name": "osiris-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "OSIRIS — context engine cache-aware pour agents IA. Serveur MCP local et provider-agnostic : filtrage serveur des payloads, ledger de contexte honnete, decisions append-only, garde-fous anti-boucle.",
   "keywords": [
     "mcp",

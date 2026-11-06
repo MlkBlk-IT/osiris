@@ -86,7 +86,8 @@ class Settings:
     """Parametres runtime immuables."""
 
     server_name: str = "osiris"
-    version: str = "0.1.0"
+    #: Doit rester aligne sur `pyproject.toml` (`project.version`).
+    version: str = "0.1.2"
     log_level: str = field(default_factory=lambda: os.getenv("OSIRIS_LOG_LEVEL", "INFO"))
 
     #: Repertoire d'etat OSIRIS (base, rapports, caches).
