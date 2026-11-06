@@ -13,7 +13,6 @@ from __future__ import annotations
 import argparse
 import base64
 import json
-import pathlib
 import subprocess
 import sys
 
@@ -76,7 +75,9 @@ def update_osiris_figures(text: str, tests: int) -> str:
     import re
 
     pattern = re.compile(r"(Osiris: \*\*\+[^*]+\*\* net prompt savings at [^*]+, )([^.]*?)(\.)")
-    return pattern.sub(lambda m: f"{m.group(1)}{m.group(2)} — {tests} tests{m.group(3)}", text, count=1)
+    return pattern.sub(
+        lambda m: f"{m.group(1)}{m.group(2)} — {tests} tests{m.group(3)}", text, count=1
+    )
 
 
 def main() -> int:
